@@ -340,7 +340,7 @@
             <!-- CONTAINER CHỨA NỘI DUNG CHÍNH (SCROLLABLE) -->
             <main class="flex-1 overflow-y-auto pb-24 px-4 pt-4" id="main-scroll-container">
                 
-                <!-- BANNER THÔNG BÁO CHẾ ĐỘ GIẢ LẬP KHI BỊ CHẶN CORS (CHỈ HIỂN THỊ KHI LỖI TRÊN LOCAL FILE HOẶC CHẶN PROXY) -->
+                <!-- BANNER THÔNG BÁO CHẾ ĐỘ GIẢ LẬP KHI BỊ CHẶN CORS -->
                 <div id="simulated-banner" class="hidden bg-accentOrange/10 border border-accentOrange/30 text-accentOrange p-3.5 rounded-2xl mb-4 text-xs leading-relaxed">
                     <div class="flex items-start gap-2.5">
                         <span class="text-sm">⚠️</span>
@@ -355,6 +355,54 @@
                 <!-- ================== TAB 1: VNINDEX DASHBOARD ================== -->
                 <section id="tab-vnindex" class="tab-content active space-y-4">
                     
+                    <!-- THẺ GIÁ VNINDEX REALTIME CHUYÊN SÂU ĐỘNG (WIDGET ĐÃ THÊM MỚI) -->
+                    <div class="bg-gradient-to-br from-darkCard to-darkCardHover border border-borderCool rounded-2xl p-5 relative overflow-hidden" id="vnindex-rt-card">
+                        <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-accentBlue/10 rounded-full blur-3xl"></div>
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-accentGreen animate-pulse" id="vnindex-card-dot"></span>
+                                <h3 class="text-[11px] font-bold tracking-widest text-textSec uppercase">Chỉ số thị trường HoSE</h3>
+                            </div>
+                            <span class="text-[10px] text-textSec font-mono uppercase bg-borderCool/40 px-2 py-0.5 rounded-md" id="vnindex-card-time">Realtime</span>
+                        </div>
+                        
+                        <div class="flex items-baseline justify-between mb-4">
+                            <div class="text-3xl font-extrabold font-mono tracking-tight text-white" id="vnindex-card-price">1,287.45</div>
+                            <div class="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-accentGreen/10 border border-accentGreen/20 text-accentGreen text-xs font-bold font-mono" id="vnindex-card-change-container">
+                                <span id="vnindex-card-change">▲ +5.20 (0.41%)</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Daily Range Progress -->
+                        <div class="space-y-1.5 mb-4 border-t border-borderCool/45 pt-3.5">
+                            <div class="flex justify-between text-[10px] text-textSec font-mono">
+                                <span>Thấp nhất: <span class="text-slate-300 font-bold" id="vnindex-card-low">1,280.45</span></span>
+                                <span>Cao nhất: <span class="text-slate-300 font-bold" id="vnindex-card-high">1,291.10</span></span>
+                            </div>
+                            <div class="w-full bg-borderCool h-1.5 rounded-full relative overflow-hidden">
+                                <div class="absolute top-0 bottom-0 bg-gradient-to-r from-accentRed via-accentOrange to-accentGreen rounded-full" id="vnindex-card-range-bar" style="left: 0%; right: 0%;"></div>
+                                <!-- Indicator dot -->
+                                <div class="absolute w-2.5 h-2.5 bg-white border border-darkBg rounded-full -top-0.5 shadow-lg transform -translate-x-1/2 transition-all duration-300" id="vnindex-card-range-dot" style="left: 50%;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Grid 3 cột thông số chi tiết -->
+                        <div class="grid grid-cols-3 gap-2 pt-1 border-t border-borderCool/30">
+                            <div class="bg-darkBg/40 border border-borderCool/50 p-2 text-center rounded-xl">
+                                <span class="text-[9px] text-textSec uppercase tracking-wider block">Mở cửa</span>
+                                <span class="text-xs font-bold font-mono text-slate-200 mt-1 block" id="vnindex-card-open">1,282.25</span>
+                            </div>
+                            <div class="bg-darkBg/40 border border-borderCool/50 p-2 text-center rounded-xl">
+                                <span class="text-[9px] text-textSec uppercase tracking-wider block">KL Giao dịch</span>
+                                <span class="text-xs font-bold font-mono text-slate-200 mt-1 block" id="vnindex-card-volume">682M cp</span>
+                            </div>
+                            <div class="bg-darkBg/40 border border-borderCool/50 p-2 text-center rounded-xl">
+                                <span class="text-[9px] text-textSec uppercase tracking-wider block">Phiên GD</span>
+                                <span class="text-[10px] font-bold text-accentGreen mt-1 block" id="vnindex-card-status-label">MỞ CỬA</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Score Chiến lược -->
                     <div class="bg-darkCard border border-borderCool rounded-2xl p-5 relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-24 h-24 bg-accentBlue/5 rounded-full blur-2xl"></div>
@@ -724,6 +772,44 @@
                                 <i data-lucide="chevron-right" class="w-4 h-4 text-textSec"></i>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Section: KẾT NỐI DỮ LIỆU GIÁ REALTIME (ĐẶC TẢ GAS PROXY MỚI) -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-5 space-y-4">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5 border-b border-borderCool/50 pb-2">
+                            <i data-lucide="wifi" class="w-4 h-4 text-accentGreen"></i> KẾT NỐI DỮ LIỆU GIÁ REALTIME
+                        </h3>
+                        
+                        <!-- Status indicator -->
+                        <div class="proxy-status flex items-center gap-2.5 p-3 bg-darkBg/60 border border-borderCool rounded-xl" id="proxy-status">
+                            <span class="status-dot w-2 h-2 rounded-full bg-slate-500" id="proxy-dot"></span>
+                            <span id="proxy-status-text" class="text-xs text-textSec font-medium">Đang kiểm tra...</span>
+                        </div>
+
+                        <!-- Input URL -->
+                        <div class="settings-field flex flex-col gap-1.5">
+                            <label class="field-label text-[10px] text-textSec uppercase tracking-wider block font-semibold">Google Apps Script Proxy URL</label>
+                            <input type="url"
+                                   id="gas-proxy-input"
+                                   class="settings-input w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-100 p-3 placeholder-slate-600 focus:outline-none focus:border-accentGreen font-mono"
+                                   placeholder="https://script.google.com/macros/s/.../exec"
+                                   autocomplete="off">
+                            <p class="field-hint text-[10px] text-textSec mt-1">
+                                Chưa có? Xem hướng dẫn setup đơn giản tại 
+                                <button onclick="showGasGuide()" class="text-accentGreen underline hover:text-accentGreen/80 inline font-semibold">đây</button>.
+                            </p>
+                        </div>
+
+                        <div class="flex gap-2.5">
+                            <button class="flex-1 bg-darkBg border border-borderCool hover:border-accentBlue text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.98]" onclick="testProxyConnection()">
+                                🔍 Test kết nối
+                            </button>
+                            <button class="flex-1 bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-accentGreen/10 hover:brightness-110 active:scale-[0.98]" onclick="saveProxyUrl()">
+                                💾 Lưu cấu hình
+                            </button>
+                        </div>
+
+                        <p id="proxy-test-result" class="text-xs p-3 rounded-xl hidden text-center font-semibold border"></p>
                     </div>
 
                     <!-- Quản trị dữ liệu sao lưu -->
@@ -1566,23 +1652,6 @@ function doGet(e) {
             localStorage.setItem(`settings_${username}`, JSON.stringify(settingsObj));
         }
 
-        // CẬP NHẬT HEADER USER ĐĂNG NHẬP
-        function updateHeaderUser() {
-            const session = AUTH.getSession();
-            if (!session) return;
-            document.getElementById('header-avatar-display').textContent = session.avatar;
-            document.getElementById('header-username-display').textContent = session.displayName;
-        }
-
-        // CẬP NHẬT TAB SETTINGS
-        function updateSettingsUserInfo() {
-            const session = AUTH.getSession();
-            if (!session) return;
-            document.getElementById('settings-avatar').textContent = session.avatar;
-            document.getElementById('settings-displayname').textContent = session.displayName;
-            document.getElementById('settings-username').textContent = '@' + session.username;
-        }
-
         // ĐIỀU HƯỚNG TAB CHÍNH / TAB ROUTER
         function switchTab(tabId) {
             activeTab = tabId;
@@ -1727,6 +1796,24 @@ function doGet(e) {
             setupAutoRefresh();
         }
 
+        // HÀM FETCH CÓ GIỚI HẠN THỜI GIAN CHỜ (TIMEOUT) CHỐNG TREO CỨNG TRÌNH DUYỆT
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 3500 } = options;
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(resource, {
+                    ...options,
+                    signal: controller.signal  
+                });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+
         // XOAY VÒNG PROXY DỰ PHÒNG CHUẨN HOÁ CHỐNG CHẶN CORS (SIÊU BẢO MẬT & ĐỘ TIN CẬY CAO)
         async function fetchWithProxy(url) {
             // Danh sách các giải pháp kết nối (Thử trực tiếp -> Thử qua CORS Proxy 1, 2, 3)
@@ -1774,7 +1861,7 @@ function doGet(e) {
                     }
 
                     if (parsedData && parsedData.data) {
-                        console.log(`Kết nối thành công qua cổng: ${src.url}`);
+                        console.log("Kết nối thành công qua cổng: " + src.url);
                         connectionMode = src.type; // Lưu trạng thái kết nối thật thành công
                         document.getElementById('simulated-banner').classList.add('hidden');
                         return parsedData;
@@ -1796,6 +1883,7 @@ function doGet(e) {
             document.getElementById('simulated-banner').classList.remove('hidden');
 
             const symbols = [...new Set([
+                'VNINDEX',
                 'VCB', 
                 ...portfolio.map(s => s.symbol.toUpperCase()),
                 ...transactions.map(t => t.symbol.toUpperCase())
@@ -1803,6 +1891,7 @@ function doGet(e) {
 
             // Danh sách giá đóng cửa thực tế tương đối của các mã phổ biến để giả lập chuẩn nhất
             const baselinePrices = {
+                'VNINDEX': 1287.45,
                 'VCB': 92000, 'FPT': 136000, 'HPG': 29000, 'TCB': 24000, 
                 'SSI': 35000, 'VND': 19500, 'MWG': 62000, 'VIC': 43000, 
                 'VHM': 41000, 'FTS': 58000, 'STB': 28000, 'HSG': 21000,
@@ -1826,7 +1915,9 @@ function doGet(e) {
                 const originBase = window.mockBaseRegistry[symbol];
                 // Fluctuate dao động ngẫu nhiên trong biên độ an toàn [-1.5% đến +1.5%]
                 const drift = (Math.random() * 3) - 1.5; 
-                const lastPrice = Math.round(originBase * (1 + drift / 100));
+                const lastPrice = symbol === 'VNINDEX'
+                    ? parseFloat((originBase * (1 + drift / 100)).toFixed(2))
+                    : Math.round(originBase * (1 + drift / 100));
                 const priceChange = lastPrice - originBase;
                 const percentChange = parseFloat(drift.toFixed(2));
 
@@ -1834,7 +1925,11 @@ function doGet(e) {
                     ticker: symbol,
                     lastPrice: lastPrice,
                     priceChange: priceChange,
-                    percentChange: percentChange
+                    percentChange: percentChange,
+                    open: originBase,
+                    high: Math.max(originBase, lastPrice) * 1.002,
+                    low: Math.min(originBase, lastPrice) * 0.998,
+                    volume: 520000000
                 };
             });
 
@@ -1843,8 +1938,9 @@ function doGet(e) {
 
         // LẤY DỮ LIỆU GIÁ REALTIME TỪ TCBS API
         async function fetchAndUpdatePrices() {
-            // Luôn thêm mã 'VCB' chạy ngầm làm proxy xu hướng thị trường ở Header kể cả khi danh mục rỗng
+            // Luôn thêm mã 'VNINDEX' và 'VCB' chạy ngầm làm proxy xu hướng thị trường ở Header kể cả khi danh mục rỗng
             const symbols = [...new Set([
+                'VNINDEX',
                 'VCB', 
                 ...portfolio.map(s => s.symbol.toUpperCase()),
                 ...transactions.map(t => t.symbol.toUpperCase())
@@ -1871,30 +1967,99 @@ function doGet(e) {
             dataArray.forEach(stock => {
                 // Tự động điều chỉnh thang tỷ lệ giá nếu API trả về dạng rút gọn
                 const rawPrice = stock.lastPrice;
-                const normalizedPrice = rawPrice < 1000 ? rawPrice * 1000 : rawPrice;
+                const normalizedPrice = (rawPrice < 1000 && stock.ticker !== 'VNINDEX') ? rawPrice * 1000 : rawPrice;
                 const rawChange = stock.priceChange;
-                const normalizedChange = (rawChange < 1000 && rawChange > -1000) ? rawChange * 1000 : rawChange;
+                const normalizedChange = (rawChange < 1000 && rawChange > -1000 && stock.ticker !== 'VNINDEX') ? rawChange * 1000 : rawChange;
 
                 prices[stock.ticker] = {
                     lastPrice: normalizedPrice,
                     percentChange: stock.percentChange,
-                    priceChange: normalizedChange
+                    priceChange: normalizedChange,
+                    open: stock.open,
+                    high: stock.high,
+                    low: stock.low,
+                    volume: stock.volume
                 };
             });
 
-            // Cập nhật Widget VNINDEX dựa trên mã VCB đã chạy ngầm
-            if (prices['VCB']) {
-                const vcbData = prices['VCB'];
-                const changeSymbol = vcbData.percentChange >= 0 ? '▲' : '▼';
-                const vState = vcbData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
+            // Cập nhật Widget VNINDEX dựa trên dữ liệu thật của chỉ số VNINDEX
+            if (prices['VNINDEX']) {
+                const indexData = prices['VNINDEX'];
+                const changeSymbol = indexData.percentChange >= 0 ? '▲' : '▼';
+                const vState = indexData.percentChange >= 0 ? 'text-accentGreen bg-accentGreen/10 border-accentGreen/20' : 'text-accentRed bg-accentRed/10 border-accentRed/20';
+                const rawState = indexData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
                 
-                document.getElementById('vnindex-quick').className = `flex items-center space-x-1.5 text-xs font-bold ${vState}`;
-                document.getElementById('vnindex-quick-change').innerText = `${changeSymbol} ${vcbData.priceChange >= 0 ? '+' : ''}${vcbData.priceChange.toLocaleString()}đ (${vcbData.percentChange}%)`;
-                document.getElementById('vnindex-quick-val').innerText = vcbData.lastPrice.toLocaleString() + 'đ';
+                const cardDot = document.getElementById('vnindex-card-dot');
+                const cardStatusLabel = document.getElementById('vnindex-card-status-label');
+
+                // Cập nhật Header
+                document.getElementById('vnindex-quick').className = `flex items-center space-x-1.5 text-xs font-bold ${rawState}`;
+                document.getElementById('vnindex-quick-change').innerText = `${changeSymbol} ${indexData.priceChange >= 0 ? '+' : ''}${indexData.priceChange.toLocaleString(undefined, {maximumFractionDigits: 2})}đ (${indexData.percentChange}%)`;
+                document.getElementById('vnindex-quick-val').innerText = indexData.lastPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
+
+                // Cập nhật Tab 1 Detailed Card mới
+                document.getElementById('vnindex-card-price').innerText = indexData.lastPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
+                document.getElementById('vnindex-card-change-container').className = `flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-bold font-mono ${vState}`;
+                document.getElementById('vnindex-card-change').innerText = `${changeSymbol} ${indexData.priceChange >= 0 ? '+' : ''}${indexData.priceChange.toLocaleString(undefined, {maximumFractionDigits: 2})}đ (${indexData.percentChange}%)`;
+                
+                const highVal = indexData.high || (indexData.lastPrice * 1.005);
+                const lowVal = indexData.low || (indexData.lastPrice * 0.995);
+                const openVal = indexData.open || indexData.lastPrice;
+                const volVal = indexData.volume || 15400000;
+
+                document.getElementById('vnindex-card-high').innerText = highVal.toLocaleString(undefined, {maximumFractionDigits: 2});
+                document.getElementById('vnindex-card-low').innerText = lowVal.toLocaleString(undefined, {maximumFractionDigits: 2});
+                document.getElementById('vnindex-card-open').innerText = openVal.toLocaleString(undefined, {maximumFractionDigits: 2});
+                
+                // Chuẩn hoá hiển thị volume
+                let formattedVol = "";
+                if (volVal >= 1000000000) {
+                    formattedVol = (volVal / 1000000000).toFixed(1) + " tỷ cp";
+                } else if (volVal >= 1000000) {
+                    formattedVol = (volVal / 1000000).toFixed(1) + "M cp";
+                } else if (volVal >= 1000) {
+                    formattedVol = (volVal / 1000).toFixed(1) + "K cp";
+                } else {
+                    formattedVol = volVal.toLocaleString() + " cp";
+                }
+                document.getElementById('vnindex-card-volume').innerText = formattedVol;
+
+                // Tính thanh trượt biên độ trong ngày
+                let rangePct = 50;
+                if (highVal !== lowVal) {
+                    rangePct = ((indexData.lastPrice - lowVal) / (highVal - lowVal)) * 100;
+                    rangePct = Math.max(0, Math.min(100, rangePct));
+                }
+                document.getElementById('vnindex-card-range-dot').style.left = `${rangePct}%`;
+
+                // Cập nhật nhãn trạng thái thị trường
+                if (isTradingHour()) {
+                    if (cardDot) cardDot.className = "w-2.5 h-2.5 rounded-full bg-accentGreen animate-pulse";
+                    if (cardStatusLabel) {
+                        cardStatusLabel.innerText = "MỞ CỬA";
+                        cardStatusLabel.className = "text-[10px] font-bold text-accentGreen mt-1 block";
+                    }
+                } else {
+                    if (cardDot) cardDot.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+                    if (cardStatusLabel) {
+                        cardStatusLabel.innerText = "ĐÓNG CỬA";
+                        cardStatusLabel.className = "text-[10px] font-bold text-slate-500 mt-1 block";
+                    }
+                }
             }
 
-            document.getElementById('status-text').innerText = "Trực tuyến";
-            document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentGreen";
+            // Gán nhãn đèn trạng thái trên Header chính
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            if (statusDot && statusText) {
+                if (connectionMode === 'MOCK') {
+                    statusText.innerText = "Simulated (Giả lập)";
+                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-accentOrange";
+                } else {
+                    statusText.innerText = "Trực tuyến (Realtime)";
+                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-accentGreen";
+                }
+            }
 
             renderPortfolio();
         }
@@ -2008,7 +2173,7 @@ function doGet(e) {
                         </div>
                         <div class="flex space-x-2">
                             <button onclick="editStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentBlue hover:border-accentBlue rounded-lg transition-colors">
-                                <i data-lucide="edit-3" class="w-3 h-3"></i>
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                             </button>
                             <button onclick="deleteStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentRed hover:border-accentRed rounded-lg transition-colors">
                                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -2109,7 +2274,7 @@ function doGet(e) {
                 if (existingIndex !== -1) {
                     const current = portfolio[existingIndex];
                     const newQty = current.quantity + qty;
-                    const newAvgCost = Math.round(((current.quantity * current.avgCost) + (qty * cost)) / newQty);
+                    const newAvgCost = Math.round(((current.quantity * current.avgCost) + (qty * price)) / newQty);
                     portfolio[existingIndex] = {
                         ...current,
                         quantity: newQty,
@@ -2519,6 +2684,7 @@ function doGet(e) {
             modal.classList.remove('hidden');
         }
 
+        // ... các xử lý Modal đổi mật khẩu khác giữ nguyên ...
         function closeConfirmModal() {
             document.getElementById('confirm-modal').classList.add('hidden');
         }
@@ -2792,6 +2958,32 @@ function doGet(e) {
                 error.className = 'text-xs text-accentRed bg-red-950/40 border border-accentRed/30 p-2.5 rounded-xl text-center font-medium';
                 error.classList.remove('hidden');
             }
+        }
+
+        // Khởi chạy App sau khi login
+        function initApp() {
+            loadProxySettings();
+            startAutoRefresh();
+            
+            loadDataFromStorage();
+            updateHeaderUser();
+            updateSettingsUserInfo();
+            
+            // Thiết lập giá trị ngày mặc định cho các Form Modal
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('stock-date').value = today;
+            document.getElementById('tx-date').value = today;
+
+            // Render dữ liệu ban đầu
+            renderPortfolio();
+            renderHistory();
+            renderMonthFilterOptions();
+            
+            // Cập nhật VNIndex Score strategic animation
+            updateGaugeScore(75);
+            
+            const session = AUTH.getSession();
+            showToast(`Chào mừng ${session.displayName} trở lại!`, 'success');
         }
     </script>
 </body>
