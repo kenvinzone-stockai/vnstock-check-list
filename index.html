@@ -317,13 +317,13 @@
             <!-- CONTAINER CHỨA NỘI DUNG CHÍNH (SCROLLABLE) -->
             <main class="flex-1 overflow-y-auto pb-24 px-4 pt-4" id="main-scroll-container">
                 
-                <!-- BANNER THÔNG BÁO CHẾ ĐỘ GIẢ LẬP KHI BỊ CHẶN CORS (CHỈ HIỂN THỊ KHI LỖI TRÊN LOCAL FILE) -->
+                <!-- BANNER THÔNG BÁO CHẾ ĐỘ GIẢ LẬP KHI BỊ CHẶN CORS (CHỈ HIỂN THỊ KHI LỖI TRÊN LOCAL FILE HOẶC CHẶN PROXY) -->
                 <div id="simulated-banner" class="hidden bg-accentOrange/10 border border-accentOrange/30 text-accentOrange p-3.5 rounded-2xl mb-4 text-xs leading-relaxed">
                     <div class="flex items-start gap-2.5">
                         <span class="text-sm">⚠️</span>
                         <div class="flex-1">
                             <h4 class="font-bold text-slate-100">Đang chạy chế độ Giả lập (Offline)</h4>
-                            <p class="text-[11px] text-slate-300 mt-0.5">Trình duyệt chặn kết nối CORS vì bạn đang mở file cục bộ. **Đưa file index.html lên GitHub Pages để kích hoạt lấy giá REALTIME từ sàn TCBS tự động.**</p>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Mạng của bạn chặn tất cả các Proxy lấy giá trực tuyến. Giá danh mục cổ phiếu sẽ tạm thời biến động giả lập theo dữ liệu đóng cửa thực tế để đảm bảo hệ thống vận hành liên tục.</p>
                             <button onclick="manualRefreshPrices()" class="mt-2 text-[10px] bg-accentOrange/20 hover:bg-accentOrange/30 text-slate-100 px-2.5 py-1 rounded-md font-bold transition-all">Thử kết nối lại</button>
                         </div>
                     </div>
@@ -1264,6 +1264,7 @@
             }));
         }
 
+        // LƯU TRÍCH LỊCH SỬ GIAO DỊCH
         function saveTransactionsToStorage() {
             if (!AUTH.isAuthenticated()) return;
             localStorage.setItem(AUTH.dataKey('transactions'), JSON.stringify({
@@ -1428,7 +1429,6 @@
                 if (autoEnabled && isTradingHour()) {
                     fetchAndUpdatePrices();
                 } else if (autoEnabled && connectionMode === 'MOCK') {
-                    // Nếu đang ở chế độ Giả lập, tự động chạy cập nhật biến động giá trị giả lập
                     activateMockPrices();
                 }
             }, 30000);
@@ -1441,26 +1441,49 @@
             setupAutoRefresh();
         }
 
-        // XOAY VÒNG PROXY DỰ PHÒNG CHUẨN HOÁ CHỐNG CHẶN CORS (SIÊU BẢO MẬT & ĐỘ TIN CẬY CAO)
+        // HÀM FETCH CÓ GIỚI HẠN THỜI GIAN CHỜ (TIMEOUT) CHỐNG TREO CỨNG TRÌNH DUYỆT
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 3500 } = options;
+            
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = await fetch(resource, {
+                    ...options,
+                    signal: controller.signal  
+                });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+
+        // XOAY VÒNG PROXY DỰ PHÒNG CHUẨN HOÁ CHỐNG CHẶN CORS CỰC KỲ KHỎE VÀ THÔNG MINH
         async function fetchWithProxy(url) {
             // Định nghĩa danh sách nguồn kéo dữ liệu:
-            // 1. Gọi TRỰC TIẾP (Sẽ chạy xuất sắc trên GitHub Pages / localhost)
-            // 2. Gọi qua Proxy bọc thô AllOrigins
-            // 3. Gọi qua Proxy CORSProxy.io
-            // 4. Gọi qua API AllOrigins bọc JSON
+            // 1. Gọi trực tiếp (Dành cho Localhost / Hoặc trường hợp đặc biệt không bị CORS chặn)
+            // 2. Gọi qua Raw AllOrigins
+            // 3. Gọi qua CORSProxy.io
+            // 4. Gọi qua AllOrigins Get bọc JSON
             // 5. Gọi qua Codetabs Proxy
+            // 6. Gọi qua ThingProxy (Bảo mật, cực kỳ khỏe)
             const proxySources = [
                 { url: url, wrapped: false, type: 'REALTIME' },
                 { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
                 { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
                 { url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, wrapped: true, type: 'PROXY' },
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' }
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
+                { url: `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' }
             ];
 
             for (const src of proxySources) {
                 try {
                     console.log(`Đang kết nối thử qua: ${src.url}`);
-                    const response = await fetch(src.url);
+                    // Khống chế thời gian chờ tối đa 3.5 giây để tránh treo trình duyệt
+                    const response = await fetchWithTimeout(src.url, { timeout: 3500 });
                     if (!response.ok) continue;
 
                     const text = await response.text();
@@ -1476,7 +1499,7 @@
                         try {
                             parsedData = JSON.parse(text);
                         } catch (e) {
-                            // Phòng hờ bọc JSON ngoài dự kiến
+                            // Phòng hờ bọc JSON ngoài dự kiến của các nhà cung cấp Proxy
                             const wrappedJson = JSON.parse(text);
                             if (wrappedJson && wrappedJson.contents) {
                                 parsedData = JSON.parse(wrappedJson.contents);
@@ -1488,33 +1511,35 @@
 
                     if (parsedData && parsedData.data) {
                         console.log(`Kết nối thành công! Kiểu dữ liệu: ${src.type}`);
-                        connectionMode = src.type; // Lưu trạng thái kết nối thật thành công
+                        connectionMode = src.type; 
                         document.getElementById('simulated-banner').classList.add('hidden');
                         return parsedData;
                     }
                 } catch (err) {
-                    console.warn(`Lỗi kết nối cổng: ${src.url}`, err);
+                    console.warn(`Lỗi kết nối cổng: ${src.url}`, err.name === 'AbortError' ? 'Bị nghẽn / Timeout' : err.message);
                 }
             }
             throw new Error("Không có kết nối mạng ổn định hoặc bị chặn CORS hoàn toàn.");
         }
 
-        // KÍCH HOẠT CHẾ ĐỘ GIẢ LẬP GIÁ THỜI GIAN THỰC (CHỈ DÙNG LÀM PHƯƠNG ÁN DỰ PHÒNG CUỐI CÙNG TRÊN LOCAL FILE)
+        // KÍCH HOẠT CHẾ ĐỘ GIẢ LẬP GIÁ THỜI GIAN THỰC (BẢO VỆ CHỐNG SẬP PHẦN MỀM KHI MẤT KẾT NỐI TOÀN BỘ)
         function activateMockPrices() {
             connectionMode = 'MOCK';
-            document.getElementById('status-text').innerText = "Simulated (Giả lập)";
+            document.getElementById('status-text').innerText = "Offline (Giả lập)";
             document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentOrange";
             
-            // Hiển thị Banner hướng dẫn gỡ lỗi CORS cục bộ
+            // Hiển thị Banner cảnh báo lỗi CORS
             document.getElementById('simulated-banner').classList.remove('hidden');
 
             const symbols = [...new Set([
+                'VNINDEX',
                 'VCB', 
                 ...portfolio.map(s => s.symbol.toUpperCase()),
                 ...transactions.map(t => t.symbol.toUpperCase())
             ])];
 
             const baselinePrices = {
+                'VNINDEX': 1287.45,
                 'VCB': 92000, 'FPT': 136000, 'HPG': 29000, 'TCB': 24000, 
                 'SSI': 35000, 'VND': 19500, 'MWG': 62000, 'VIC': 43000, 
                 'VHM': 41000, 'FTS': 58000, 'STB': 28000, 'HSG': 21000,
@@ -1534,8 +1559,10 @@
                 if (!window.mockBaseRegistry[symbol]) window.mockBaseRegistry[symbol] = basePrice;
 
                 const originBase = window.mockBaseRegistry[symbol];
-                const drift = (Math.random() * 3) - 1.5; 
-                const lastPrice = Math.round(originBase * (1 + drift / 100));
+                const drift = (Math.random() * 2) - 1.0; 
+                const lastPrice = symbol === 'VNINDEX' 
+                    ? parseFloat((originBase * (1 + drift / 100)).toFixed(2))
+                    : Math.round(originBase * (1 + drift / 100));
                 const priceChange = lastPrice - originBase;
                 const percentChange = parseFloat(drift.toFixed(2));
 
@@ -1552,7 +1579,9 @@
 
         // LẤY DỮ LIỆU GIÁ REALTIME TỪ TCBS API
         async function fetchAndUpdatePrices() {
+            // Luôn thêm mã 'VNINDEX' và 'VCB' chạy ngầm làm tham chiếu chỉ số
             const symbols = [...new Set([
+                'VNINDEX',
                 'VCB', 
                 ...portfolio.map(s => s.symbol.toUpperCase()),
                 ...transactions.map(t => t.symbol.toUpperCase())
@@ -1568,7 +1597,7 @@
                 processPriceData(result.data);
             } catch (err) {
                 console.error("Lỗi lấy giá: ", err);
-                // Chỉ chạy chế độ giả lập nếu toàn bộ các cổng kết nối API thực bị lỗi (Chạy offline cục bộ)
+                // Tự động kích hoạt Giả Lập khi mất kết nối/chặn CORS
                 activateMockPrices();
             }
         }
@@ -1578,9 +1607,10 @@
 
             dataArray.forEach(stock => {
                 const rawPrice = stock.lastPrice;
-                const normalizedPrice = rawPrice < 1000 ? rawPrice * 1000 : rawPrice;
+                // Chuẩn hoá mệnh giá sàn (Nếu API sàn trả về đơn vị chia 1000)
+                const normalizedPrice = (rawPrice < 1000 && stock.ticker !== 'VNINDEX') ? rawPrice * 1000 : rawPrice;
                 const rawChange = stock.priceChange;
-                const normalizedChange = (rawChange < 1000 && rawChange > -1000) ? rawChange * 1000 : rawChange;
+                const normalizedChange = (rawChange < 1000 && rawChange > -1000 && stock.ticker !== 'VNINDEX') ? rawChange * 1000 : rawChange;
 
                 prices[stock.ticker] = {
                     lastPrice: normalizedPrice,
@@ -1589,8 +1619,17 @@
                 };
             });
 
-            // Cập nhật chỉ số VNINDEX giả định trên thanh Header dựa vào mã neo VCB
-            if (prices['VCB']) {
+            // Cập nhật chỉ số VNINDEX chuẩn xác
+            if (prices['VNINDEX']) {
+                const indexData = prices['VNINDEX'];
+                const changeSymbol = indexData.percentChange >= 0 ? '▲' : '▼';
+                const vState = indexData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
+                
+                document.getElementById('vnindex-quick').className = `flex items-center space-x-1.5 text-xs font-bold ${vState}`;
+                document.getElementById('vnindex-quick-change').innerText = `${changeSymbol} ${indexData.priceChange >= 0 ? '+' : ''}${indexData.priceChange.toLocaleString(undefined, {maximumFractionDigits: 2})}đ (${indexData.percentChange}%)`;
+                document.getElementById('vnindex-quick-val').innerText = indexData.lastPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
+            } else if (prices['VCB']) {
+                // Fallback chỉ số sàn dựa trên mã VCB
                 const vcbData = prices['VCB'];
                 const changeSymbol = vcbData.percentChange >= 0 ? '▲' : '▼';
                 const vState = vcbData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
@@ -1600,13 +1639,13 @@
                 document.getElementById('vnindex-quick-val').innerText = vcbData.lastPrice.toLocaleString() + 'đ';
             }
 
-            // Hiển thị nhãn kết nối tương ứng dựa vào kết quả kiểm tra Origin thực tế
+            // Gán nhãn chỉ báo chất lượng kết nối
             if (connectionMode === 'REALTIME') {
-                document.getElementById('status-text').innerText = "Mạng REALTIME (Trực tiếp)";
+                document.getElementById('status-text').innerText = "Trực tiếp (Realtime)";
                 document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentGreen";
             } else if (connectionMode === 'PROXY') {
-                document.getElementById('status-text').innerText = "Qua Proxy (Trung gian)";
-                document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-[#3b82f6]";
+                document.getElementById('status-text').innerText = "Thông qua Proxy";
+                document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentBlue";
             }
 
             renderPortfolio();
@@ -1621,11 +1660,11 @@
                     if (icon) icon.classList.remove('animate-spin');
                 }, 600);
                 if (connectionMode === 'MOCK') {
-                    showToast("Đang hoạt động trong chế độ giả lập cục bộ.", "warn");
+                    showToast("Mạng không ổn định, đang chạy chế độ giả lập.", "warn");
                 } else if (connectionMode === 'REALTIME') {
-                    showToast("Đã cập nhật giá REALTIME từ sàn TCBS!", "success");
+                    showToast("Lấy giá Realtime thành công!", "success");
                 } else {
-                    showToast("Kết nối thành công qua máy chủ Proxy trung gian!", "success");
+                    showToast("Kết nối dữ liệu trực tuyến thành công!", "success");
                 }
             });
         }
@@ -1730,7 +1769,7 @@
                         </div>
                         <div class="flex space-x-2">
                             <button onclick="editStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentBlue hover:border-accentBlue rounded-lg transition-colors">
-                                <i data-lucide="edit-3" class="w-3 h-3"></i>
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                             </button>
                             <button onclick="deleteStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentRed hover:border-accentRed rounded-lg transition-colors">
                                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -2217,12 +2256,10 @@
                         document.getElementById('setting-auto-refresh').checked = parsedData.settings.autoRefresh !== false;
                     }
 
-                    // Lưu theo cấu trúc user hiện tại
                     savePortfolioToStorage();
                     saveTransactionsToStorage();
                     saveSettingsToStorage();
 
-                    // Cập nhật giao diện
                     fetchAndUpdatePrices();
                     renderPortfolio();
                     renderHistory();
@@ -2251,7 +2288,6 @@
             if (!AUTH.isAuthenticated()) return;
             const username = AUTH.currentUsername();
             
-            // Chỉ xóa data của user đang đăng nhập
             localStorage.removeItem(`portfolio_${username}`);
             localStorage.removeItem(`transactions_${username}`);
             localStorage.removeItem(`settings_${username}`);
@@ -2289,7 +2325,6 @@
         }
 
         function initAuthUI() {
-            // TỰ ĐỘNG CHUẨN HÓA KHI ĐANG GÕ TÊN ĐĂNG NHẬP (TRÁNH LỖI KÝ TỰ ĐẶC BIỆT)
             const regUsername = document.getElementById('reg-username');
             if (regUsername) {
                 regUsername.addEventListener('input', function(e) {
@@ -2304,7 +2339,6 @@
                 });
             }
 
-            // Render avatar picker
             const picker = document.getElementById('avatar-picker');
             picker.innerHTML = '';
             AUTH.AVATARS.forEach(emoji => {
@@ -2320,10 +2354,8 @@
                 picker.appendChild(btn);
             });
 
-            // Render danh sách users đã có (Quick login)
             renderUserList();
 
-            // Login button
             document.getElementById('login-btn').onclick = async () => {
                 const username = document.getElementById('login-username').value;
                 const password = document.getElementById('login-password').value;
@@ -2332,7 +2364,6 @@
                 }, 'login-error', 'login-btn');
             };
 
-            // Register button
             document.getElementById('register-btn').onclick = async () => {
                 const displayName = document.getElementById('reg-displayname').value;
                 const username = document.getElementById('reg-username').value;
@@ -2348,7 +2379,6 @@
                 }, 'register-error', 'register-btn');
             };
 
-            // Enter key bindings
             ['login-password', 'reg-confirm'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
@@ -2405,7 +2435,6 @@
                 btn.disabled = true;
                 btn.textContent = 'Đang xử lý...';
                 await fn();
-                // Đăng nhập thành công -> chuyển giao diện vào App
                 document.getElementById('auth-screen').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
                 initApp();
@@ -2431,7 +2460,6 @@
             setTimeout(() => el.classList.add('hidden'), 5000);
         }
 
-        // ĐĂNG XUẤT PHIÊN LÀM VIỆC
         function confirmLogout() {
             AUTH.logout();
             showToast("Đã đăng xuất phiên làm việc", "warn");
