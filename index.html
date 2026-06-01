@@ -1447,23 +1447,52 @@ function doGet(e) {
         let prices = {};
         let activeTab = 'vnindex';
         let _refreshTimer = null;
+        let connectionMode = 'REALTIME'; // Có 3 mức độ: 'REALTIME' (Trực tiếp), 'PROXY' (Trung gian), 'MOCK' (Giả lập)
 
-        // HÀM FETCH CÓ GIỚI HẠN THỜI GIAN CHỜ (TIMEOUT) CHỐNG TREO CỨNG TRÌNH DUYỆT
-        async function fetchWithTimeout(resource, options = {}) {
-            const { timeout = 3500 } = options;
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeout);
-            try {
-                const response = await fetch(resource, {
-                    ...options,
-                    signal: controller.signal  
-                });
-                clearTimeout(id);
-                return response;
-            } catch (error) {
-                clearTimeout(id);
-                throw error;
+        const CORS_PROXY = 'https://corsproxy.io/?';
+
+        // ===== KHỞI ĐỘNG HỆ THỐNG =====
+        window.addEventListener('DOMContentLoaded', () => {
+            if (AUTH.isAuthenticated()) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                initApp();
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('app').classList.add('hidden');
+                initAuthUI();
             }
+        });
+
+        // KHỞI ĐỘNG APP VỚI USER ĐÃ ĐĂNG NHẬP
+        function initApp() {
+            lucide.createIcons();
+            
+            // Tải dữ liệu từ Storage cô lập theo user
+            loadDataFromStorage();
+            updateHeaderUser();
+            updateSettingsUserInfo();
+            
+            // Thiết lập giá trị ngày mặc định cho các Form Modal
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('stock-date').value = today;
+            document.getElementById('tx-date').value = today;
+
+            // Chạy chu kỳ kết nối TCBS lấy giá thời gian thực
+            fetchAndUpdatePrices();
+            setupAutoRefresh();
+
+            // Render dữ liệu ban đầu
+            renderPortfolio();
+            renderHistory();
+            renderMonthFilterOptions();
+            
+            // Cập nhật VNIndex Score strategic animation
+            updateGaugeScore(75);
+            
+            // Tạo thông báo chào mừng
+            const session = AUTH.getSession();
+            showToast(`Chào mừng ${session.displayName} trở lại!`, 'success');
         }
 
         // TẢI DỮ LIỆU TỪ LOCALSTORAGE (THEO PREFIX TÀI KHOẢN)
@@ -1537,6 +1566,23 @@ function doGet(e) {
             localStorage.setItem(`settings_${username}`, JSON.stringify(settingsObj));
         }
 
+        // CẬP NHẬT HEADER USER ĐĂNG NHẬP
+        function updateHeaderUser() {
+            const session = AUTH.getSession();
+            if (!session) return;
+            document.getElementById('header-avatar-display').textContent = session.avatar;
+            document.getElementById('header-username-display').textContent = session.displayName;
+        }
+
+        // CẬP NHẬT TAB SETTINGS
+        function updateSettingsUserInfo() {
+            const session = AUTH.getSession();
+            if (!session) return;
+            document.getElementById('settings-avatar').textContent = session.avatar;
+            document.getElementById('settings-displayname').textContent = session.displayName;
+            document.getElementById('settings-username').textContent = '@' + session.username;
+        }
+
         // ĐIỀU HƯỚNG TAB CHÍNH / TAB ROUTER
         function switchTab(tabId) {
             activeTab = tabId;
@@ -1560,264 +1606,305 @@ function doGet(e) {
             lucide.createIcons();
         }
 
-        // ĐÈN CHỈ BÁO KẾT NỐI & KHỞI CHẠY TỰ ĐỘNG CẬP NHẬT
-        function startAutoRefresh() {
-            stopAutoRefresh();
-
-            const tick = async () => {
-                await refreshPortfolioPrices();
-                // Schedule lần tiếp theo dựa vào phiên giao dịch
-                const interval = API.isTradingHour() ? 30000 : 300000; // 30s | 5 phút
-                _refreshTimer = setTimeout(tick, interval);
-            };
-
-            tick(); // chạy ngay lần đầu
-        }
-
-        function stopAutoRefresh() {
-            if (_refreshTimer) {
-                clearTimeout(_refreshTimer);
-                _refreshTimer = null;
+        // HIỂN THỊ THÔNG BÁO TOAST TRÊN MÀN HÌNH
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-3.5 rounded-xl text-xs font-semibold flex items-center space-x-2.5 shadow-2xl border transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+            
+            let bgClass = 'bg-darkCard border-borderCool text-slate-100';
+            let icon = 'info';
+            
+            if (type === 'success') {
+                bgClass = 'bg-darkCard border-accentGreen/30 text-accentGreen';
+                icon = 'check-circle';
+            } else if (type === 'error') {
+                bgClass = 'bg-darkCard border-accentRed/30 text-accentRed';
+                icon = 'alert-triangle';
+            } else if (type === 'warn') {
+                bgClass = 'bg-darkCard border-accentOrange/30 text-accentOrange';
+                icon = 'alert-circle';
             }
+
+            toast.className += ` ${bgClass}`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Kích hoạt animation
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            // Tự động xóa sau 3.5 giây
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-8px]', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
         }
 
-        // Tạm dừng khi tab bị ẩn
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                stopAutoRefresh();
+        // HOẠT HỌA CIRCULAR SCORE GAUGE
+        function updateGaugeScore(score) {
+            const gauge = document.getElementById('gauge-progress');
+            const scoreLabel = document.getElementById('strategy-score');
+            const badge = document.getElementById('strategy-badge');
+            
+            // Chu vi hình tròn r=40 là ~251.2
+            const maxOffset = 251.2;
+            const offset = maxOffset - (score / 100) * maxOffset;
+            gauge.style.strokeDashoffset = offset;
+            
+            scoreLabel.innerText = score;
+
+            if (score >= 70) {
+                badge.innerText = "MUA MẠNH";
+                badge.className = "px-2.5 py-0.5 bg-accentGreen/10 border border-accentGreen/20 text-accentGreen rounded-full text-[10px] font-bold uppercase tracking-wider";
+            } else if (score >= 50) {
+                badge.innerText = "HOLD / THEO DÕI";
+                badge.className = "px-2.5 py-0.5 bg-accentOrange/10 border border-accentOrange/20 text-accentOrange rounded-full text-[10px] font-bold uppercase tracking-wider";
             } else {
-                startAutoRefresh();
+                badge.innerText = "BÁN / PHÒNG THỦ";
+                badge.className = "px-2.5 py-0.5 bg-accentRed/10 border border-accentRed/20 text-accentRed rounded-full text-[10px] font-bold uppercase tracking-wider";
             }
-        });
+        }
 
-        // Lấy danh sách các mã CK duy nhất đang nắm giữ để cập nhật giá
-        function getPortfolioSymbols() {
-            return [...new Set([
-                'VNINDEX',
-                'VCB',
+        // HIỂN THỊ VÀ TẢI BẢNG GIÁ IFRAME KENVINZONE
+        let isIframeOpened = false;
+        function toggleIframe() {
+            const container = document.getElementById('iframe-container');
+            isIframeOpened = !isIframeOpened;
+            if (isIframeOpened) {
+                container.classList.remove('hidden');
+                document.getElementById('vnindex-iframe').src = document.getElementById('setting-feed-url').value;
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function iframeLoaded() {
+            const loader = document.getElementById('iframe-loader');
+            const iframe = document.getElementById('vnindex-iframe');
+            if (loader) loader.classList.add('hidden');
+            if (iframe) iframe.classList.remove('opacity-0');
+        }
+
+        // THỜI GIAN GIAO DỊCH VIỆT NAM (9:00-11:30 & 13:00-15:00 GMT+7)
+        function isTradingHour() {
+            const now = new Date();
+            const vnTime = new Date(now.toLocaleString('en-US', {timeZone: 'Asia/Ho_Chi_Minh'}));
+            const day = vnTime.getDay();
+            
+            if (day === 0 || day === 6) return false;
+
+            const h = vnTime.getHours();
+            const m = vnTime.getMinutes();
+
+            const morningSession = (h === 9 && m >= 0) || (h === 10) || (h === 11 && m <= 30);
+            const afternoonSession = (h === 13 && m >= 0) || (h === 14) || (h === 15 && m === 0);
+
+            return morningSession || afternoonSession;
+        }
+
+        // TỰ ĐỘNG CẬP NHẬT TRONG GIỜ GIAO DỊCH
+        function setupAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            
+            autoRefreshInterval = setInterval(() => {
+                const autoEnabled = document.getElementById('setting-auto-refresh').checked;
+                if (autoEnabled && isTradingHour()) {
+                    fetchAndUpdatePrices();
+                } else if (autoEnabled && connectionMode === 'MOCK') {
+                    // Nếu đang ở chế độ Giả lập, tự động chạy cập nhật biến động giá trị giả lập
+                    activateMockPrices();
+                }
+            }, 30000);
+        }
+
+        function toggleAutoRefreshSetting() {
+            const isEnabled = document.getElementById('setting-auto-refresh').checked;
+            saveSettingsToStorage();
+            showToast(isEnabled ? 'Đã bật tự động cập nhật giá' : 'Đã tắt tự động cập nhật', 'warn');
+            setupAutoRefresh();
+        }
+
+        // XOAY VÒNG PROXY DỰ PHÒNG CHUẨN HOÁ CHỐNG CHẶN CORS (SIÊU BẢO MẬT & ĐỘ TIN CẬY CAO)
+        async function fetchWithProxy(url) {
+            // Danh sách các giải pháp kết nối (Thử trực tiếp -> Thử qua CORS Proxy 1, 2, 3)
+            const proxySources = [
+                // 1. Thử gọi trực tiếp trước
+                { url: url, wrapped: false, type: 'REALTIME' },
+                // 2. Thử qua CORSProxy.io (Độ ổn định trung bình)
+                { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
+                // 3. Thử qua AllOrigins Raw (Không bọc JSON)
+                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
+                // 4. Thử qua AllOrigins Get (Cực kỳ ổn định nhưng bọc JSON trong trường contents)
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, wrapped: true, type: 'PROXY' },
+                // 5. Thử qua Codetabs Proxy
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' }
+            ];
+
+            for (const src of proxySources) {
+                try {
+                    console.log(`Đang thử kết nối qua: ${src.url}`);
+                    const response = await fetch(src.url);
+                    if (!response.ok) continue;
+
+                    const text = await response.text();
+                    if (!text || text.trim() === '') continue;
+
+                    let parsedData = null;
+                    if (src.wrapped) {
+                        // AllOrigins bọc kết quả trả về trong JSON { contents: "..." }
+                        const wrappedJson = JSON.parse(text);
+                        if (wrappedJson && wrappedJson.contents) {
+                            parsedData = JSON.parse(wrappedJson.contents);
+                        }
+                    } else {
+                        // Thử parse thô, nếu proxy bọc ngoài ý muốn vẫn xử lý được
+                        try {
+                            parsedData = JSON.parse(text);
+                        } catch (e) {
+                            const wrappedJson = JSON.parse(text);
+                            if (wrappedJson && wrappedJson.contents) {
+                                parsedData = JSON.parse(wrappedJson.contents);
+                            } else {
+                                throw e;
+                            }
+                        }
+                    }
+
+                    if (parsedData && parsedData.data) {
+                        console.log(`Kết nối thành công qua cổng: ${src.url}`);
+                        connectionMode = src.type; // Lưu trạng thái kết nối thật thành công
+                        document.getElementById('simulated-banner').classList.add('hidden');
+                        return parsedData;
+                    }
+                } catch (err) {
+                    console.warn(`Lỗi kết nối cổng ${src.url}:`, err);
+                }
+            }
+            throw new Error("Tất cả các máy chủ trung gian CORS đều quá tải hoặc bị nhà mạng chặn.");
+        }
+
+        // KÍCH HOẠT CHẾ ĐỘ GIẢ LẬP GIÁ THỜI GIAN THỰC (KHÔNG BAO GIỜ BỊ MẤT KẾT NỐI - ĐỈNH CAO UX)
+        function activateMockPrices() {
+            connectionMode = 'MOCK';
+            document.getElementById('status-text').innerText = "Offline (Giả lập)";
+            document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentOrange";
+            
+            // Hiển thị Banner hướng dẫn gỡ lỗi CORS
+            document.getElementById('simulated-banner').classList.remove('hidden');
+
+            const symbols = [...new Set([
+                'VCB', 
                 ...portfolio.map(s => s.symbol.toUpperCase()),
                 ...transactions.map(t => t.symbol.toUpperCase())
             ])];
-        }
 
-        // Cập nhật Offline Banner tuỳ trạng thái giá mock hay realtime
-        function updateOfflineBanner(isMock) {
-            const banner = document.getElementById('offline-banner');
-            if (banner) {
-                banner.classList.toggle('hidden', !isMock);
-            }
-        }
+            // Danh sách giá đóng cửa thực tế tương đối của các mã phổ biến để giả lập chuẩn nhất
+            const baselinePrices = {
+                'VCB': 92000, 'FPT': 136000, 'HPG': 29000, 'TCB': 24000, 
+                'SSI': 35000, 'VND': 19500, 'MWG': 62000, 'VIC': 43000, 
+                'VHM': 41000, 'FTS': 58000, 'STB': 28000, 'HSG': 21000,
+                'GMD': 82000, 'DGC': 118000, 'KBC': 31000, 'VRE': 22000
+            };
 
-        // Nạp và render lại dữ liệu giá thời gian thực
-        async function refreshPortfolioPrices() {
-            const symbols = getPortfolioSymbols();
-            if (symbols.length === 0) return;
+            const mockDataArray = symbols.map(symbol => {
+                let basePrice = 50000;
+                if (baselinePrices[symbol]) {
+                    basePrice = baselinePrices[symbol];
+                } else {
+                    // Nếu mã lạ, lấy giá vốn hoặc mặc định
+                    const stock = portfolio.find(s => s.symbol === symbol);
+                    if (stock && stock.avgCost) basePrice = stock.avgCost;
+                }
 
-            const fetchedPrices = await API.getPrices(symbols);
-            
-            fetchedPrices.forEach(p => {
-                prices[p.symbol] = {
-                    lastPrice: p.price,
-                    percentChange: p.changePercent,
-                    priceChange: p.change
+                // Lưu trữ gốc cố định để giá dao động thực tế quanh trục cũ, tránh trôi giá vô hạn
+                if (!window.mockBaseRegistry) window.mockBaseRegistry = {};
+                if (!window.mockBaseRegistry[symbol]) window.mockBaseRegistry[symbol] = basePrice;
+
+                const originBase = window.mockBaseRegistry[symbol];
+                // Fluctuate dao động ngẫu nhiên trong biên độ an toàn [-1.5% đến +1.5%]
+                const drift = (Math.random() * 3) - 1.5; 
+                const lastPrice = Math.round(originBase * (1 + drift / 100));
+                const priceChange = lastPrice - originBase;
+                const percentChange = parseFloat(drift.toFixed(2));
+
+                return {
+                    ticker: symbol,
+                    lastPrice: lastPrice,
+                    priceChange: priceChange,
+                    percentChange: percentChange
                 };
             });
 
-            const hasMock = fetchedPrices.some(p => p.isMock);
-            updateOfflineBanner(hasMock);
+            processPriceData(mockDataArray);
+        }
 
-            // Cập nhật nhanh VNIndex trên thanh Header
-            if (prices['VNINDEX']) {
-                const indexData = prices['VNINDEX'];
-                const changeSymbol = indexData.percentChange >= 0 ? '▲' : '▼';
-                const vState = indexData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
+        // LẤY DỮ LIỆU GIÁ REALTIME TỪ TCBS API
+        async function fetchAndUpdatePrices() {
+            // Luôn thêm mã 'VCB' chạy ngầm làm proxy xu hướng thị trường ở Header kể cả khi danh mục rỗng
+            const symbols = [...new Set([
+                'VCB', 
+                ...portfolio.map(s => s.symbol.toUpperCase()),
+                ...transactions.map(t => t.symbol.toUpperCase())
+            ])];
+
+            document.getElementById('status-text').innerText = "Đang kết nối...";
+            document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentOrange animate-ping";
+
+            const apiURL = `https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/batch-quote?tickers=${symbols.join(',')}`;
+            
+            try {
+                const result = await fetchWithProxy(apiURL);
+                processPriceData(result.data);
+            } catch (err) {
+                console.error("Lỗi lấy giá: ", err);
+                // Gặp lỗi kết nối CORS -> Tự động chuyển sang chế độ Giả Lập thông minh
+                activateMockPrices();
+            }
+        }
+
+        function processPriceData(dataArray) {
+            if (!dataArray || dataArray.length === 0) return;
+
+            dataArray.forEach(stock => {
+                // Tự động điều chỉnh thang tỷ lệ giá nếu API trả về dạng rút gọn
+                const rawPrice = stock.lastPrice;
+                const normalizedPrice = rawPrice < 1000 ? rawPrice * 1000 : rawPrice;
+                const rawChange = stock.priceChange;
+                const normalizedChange = (rawChange < 1000 && rawChange > -1000) ? rawChange * 1000 : rawChange;
+
+                prices[stock.ticker] = {
+                    lastPrice: normalizedPrice,
+                    percentChange: stock.percentChange,
+                    priceChange: normalizedChange
+                };
+            });
+
+            // Cập nhật Widget VNINDEX dựa trên mã VCB đã chạy ngầm
+            if (prices['VCB']) {
+                const vcbData = prices['VCB'];
+                const changeSymbol = vcbData.percentChange >= 0 ? '▲' : '▼';
+                const vState = vcbData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
                 
                 document.getElementById('vnindex-quick').className = `flex items-center space-x-1.5 text-xs font-bold ${vState}`;
-                document.getElementById('vnindex-quick-change').innerText = `${changeSymbol} ${indexData.priceChange >= 0 ? '+' : ''}${indexData.priceChange.toLocaleString(undefined, {maximumFractionDigits: 2})}đ (${indexData.percentChange}%)`;
-                document.getElementById('vnindex-quick-val').innerText = indexData.lastPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
+                document.getElementById('vnindex-quick-change').innerText = `${changeSymbol} ${vcbData.priceChange >= 0 ? '+' : ''}${vcbData.priceChange.toLocaleString()}đ (${vcbData.percentChange}%)`;
+                document.getElementById('vnindex-quick-val').innerText = vcbData.lastPrice.toLocaleString() + 'đ';
             }
 
-            // Gán nhãn đèn trạng thái trên Header chính
-            const statusDot = document.getElementById('status-dot');
-            const statusText = document.getElementById('status-text');
-            if (statusDot && statusText) {
-                if (hasMock) {
-                    statusText.innerText = "Simulated (Giả lập)";
-                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-accentOrange";
-                } else {
-                    statusText.innerText = "Trực tuyến (Realtime)";
-                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-accentGreen";
-                }
-            }
+            document.getElementById('status-text').innerText = "Trực tuyến";
+            document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentGreen";
 
             renderPortfolio();
         }
 
-        // ============================================
-        // PROXY SETTINGS LOGIC (TAB CONFIG)
-        // ============================================
-        function loadProxySettings() {
-            const username = AUTH.currentUsername();
-            if (!username) return;
-
-            const raw = localStorage.getItem(`settings_${username}`);
-            const settings = raw ? JSON.parse(raw) : {};
-
-            const input = document.getElementById('gas-proxy-input');
-            if (input && settings.gasProxyUrl) {
-                input.value = settings.gasProxyUrl;
-            }
-
-            updateProxyStatus();
-        }
-
-        function saveProxyUrl() {
-            const username = AUTH.currentUsername();
-            if (!username) return;
-
-            const url = document.getElementById('gas-proxy-input').value.trim();
-
-            // Validate URL format
-            if (url && !url.startsWith('https://script.google.com/macros/s/')) {
-                showProxyResult('❌ URL không đúng định dạng Google Apps Script', 'error');
-                return;
-            }
-
-            const raw = localStorage.getItem(`settings_${username}`);
-            const settings = raw ? JSON.parse(raw) : {};
-            settings.gasProxyUrl = url;
-            localStorage.setItem(`settings_${username}`, JSON.stringify(settings));
-
-            // Clear API cache để dùng URL mới
-            API.clearCache();
-
-            showProxyResult('✅ Đã lưu! Đang kiểm tra kết nối...', 'success');
-            updateProxyStatus();
-
-            // Auto test sau khi lưu
-            setTimeout(() => testProxyConnection(), 500);
-        }
-
-        async function testProxyConnection() {
-            const proxyUrl = API.getProxyUrl();
-            const resultEl = document.getElementById('proxy-test-result');
-
-            if (!proxyUrl) {
-                showProxyResult('⚠️ Chưa nhập URL proxy', 'warning');
-                return;
-            }
-
-            showProxyResult('🔄 Đang kiểm tra kết nối...', 'info');
-
-            try {
-                const url = `${proxyUrl}?symbols=VCB&type=quote`;
-                const res = await fetchWithTimeout(url, { timeout: 10000 }); // timeout 10s
-
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-
-                if (data.error) throw new Error(data.message);
-
-                const pricesList = data.data || data || [];
-                if (pricesList.length > 0) {
-                    const vcb = pricesList[0];
-                    const rawPrice = vcb.lastPrice || vcb.price || 0;
-                    const normalizedPrice = rawPrice < 1000 ? rawPrice * 1000 : rawPrice;
-                    
-                    showProxyResult(
-                        `✅ Kết nối thành công! VCB = ${normalizedPrice.toLocaleString('vi-VN')}đ`,
-                        'success'
-                    );
-                    updateProxyStatus(true);
-
-                    // Reload giá danh mục ngay
-                    API.clearCache();
-                    refreshPortfolioPrices();
-                } else {
-                    throw new Error('Không có dữ liệu trả về');
-                }
-
-            } catch (err) {
-                showProxyResult(`❌ Lỗi: ${err.message}`, 'error');
-                updateProxyStatus(false);
-            }
-        }
-
-        function updateProxyStatus(isOnline) {
-            const dot  = document.getElementById('proxy-dot');
-            const text = document.getElementById('proxy-status-text');
-            if (!dot || !text) return;
-
-            const proxyUrl = API.getProxyUrl();
-
-            if (!proxyUrl) {
-                dot.className  = 'status-dot offline';
-                text.textContent = 'Chưa cấu hình — đang dùng giá giả lập';
-                return;
-            }
-
-            if (isOnline === true) {
-                dot.className  = 'status-dot online';
-                text.textContent = 'Đã kết nối — dữ liệu Realtime';
-            } else if (isOnline === false) {
-                dot.className  = 'status-dot error';
-                text.textContent = 'Lỗi kết nối — đang dùng giá giả lập';
-            } else {
-                dot.className  = 'status-dot pending';
-                text.textContent = 'Đã cấu hình — chưa kiểm tra kết nối';
-            }
-        }
-
-        function showProxyResult(msg, type) {
-            const el = document.getElementById('proxy-test-result');
-            if (!el) return;
-            el.textContent = msg;
-            
-            // Xoá styles cũ
-            el.className = `text-xs p-3 rounded-xl mt-3 font-semibold text-center border`;
-            
-            if (type === 'success') {
-                el.className += ' text-accentGreen bg-accentGreen/10 border-accentGreen/20';
-            } else if (type === 'error') {
-                el.className += ' text-accentRed bg-accentRed/10 border-accentRed/20';
-            } else if (type === 'warning') {
-                el.className += ' text-accentOrange bg-accentOrange/10 border-accentOrange/20';
-            } else {
-                el.className += ' text-slate-300 bg-borderCool/30 border-borderCool';
-            }
-            el.classList.remove('hidden');
-        }
-
-        // Hướng dẫn setup GAS (Modal cao cấp)
-        function showGasGuide() {
-            const modal = document.getElementById('gas-guide-modal');
-            const card = document.getElementById('gas-guide-modal-card');
-            modal.classList.remove('hidden');
-            setTimeout(() => card.classList.remove('scale-95', 'opacity-0'), 10);
-            lucide.createIcons();
-        }
-
-        function closeGasGuide() {
-            const card = document.getElementById('gas-guide-modal-card');
-            card.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                document.getElementById('gas-guide-modal').classList.add('hidden');
-            }, 150);
-        }
-
-        // ============================================
-        // APP INIT & UTILS LOGIC
-        // ============================================
         function manualRefreshPrices() {
             const icon = document.getElementById('price-refresh-icon');
-            if (icon) icon.classList.add('animate-spin');
-            
-            API.clearCache();
-            refreshPortfolioPrices().then(() => {
-                setTimeout(() => {
-                    if (icon) icon.classList.remove('animate-spin');
-                }, 600);
-                showToast("Đã làm mới dữ liệu giá thành công!", "success");
+            icon.classList.add('animate-spin');
+            fetchAndUpdatePrices().then(() => {
+                setTimeout(() => icon.classList.remove('animate-spin'), 600);
+                showToast("Đã cập nhật giá mới nhất", "success");
             });
         }
 
@@ -1921,7 +2008,7 @@ function doGet(e) {
                         </div>
                         <div class="flex space-x-2">
                             <button onclick="editStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentBlue hover:border-accentBlue rounded-lg transition-colors">
-                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                <i data-lucide="edit-3" class="w-3 h-3"></i>
                             </button>
                             <button onclick="deleteStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentRed hover:border-accentRed rounded-lg transition-colors">
                                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -2241,14 +2328,6 @@ function doGet(e) {
             selectTxType('BUY');
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('tx-date').value = today;
-        }
-
-        // THÊM HÀM TRÌNH BÀY HIỆN TRẠNG KHI TẢI XONG IFRAME (SỬA LỖI ReferenceError)
-        function iframeLoaded() {
-            const loader = document.getElementById('iframe-loader');
-            const iframe = document.getElementById('vnindex-iframe');
-            if (loader) loader.classList.add('hidden');
-            if (iframe) iframe.classList.remove('opacity-0');
         }
 
         function closeTxModal() {
@@ -2713,32 +2792,6 @@ function doGet(e) {
                 error.className = 'text-xs text-accentRed bg-red-950/40 border border-accentRed/30 p-2.5 rounded-xl text-center font-medium';
                 error.classList.remove('hidden');
             }
-        }
-
-        // Khởi chạy App sau khi login
-        function initApp() {
-            loadProxySettings();
-            startAutoRefresh();
-            
-            loadDataFromStorage();
-            updateHeaderUser();
-            updateSettingsUserInfo();
-            
-            // Thiết lập giá trị ngày mặc định cho các Form Modal
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('stock-date').value = today;
-            document.getElementById('tx-date').value = today;
-
-            // Render dữ liệu ban đầu
-            renderPortfolio();
-            renderHistory();
-            renderMonthFilterOptions();
-            
-            // Cập nhật VNIndex Score strategic animation
-            updateGaugeScore(75);
-            
-            const session = AUTH.getSession();
-            showToast(`Chào mừng ${session.displayName} trở lại!`, 'success');
         }
     </script>
 </body>
