@@ -1,0 +1,2528 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VNIndex Portfolio Master v2 - Multi-User Mode</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0a0e1a',
+                        darkCard: '#111827',
+                        darkCardHover: '#1a2235',
+                        accentGreen: '#00d4aa',
+                        accentOrange: '#f59e0b',
+                        accentRed: '#ef4444',
+                        accentBlue: '#3b82f6',
+                        borderCool: '#1e2d40',
+                        textSec: '#94a3b8'
+                    },
+                    fontFamily: {
+                        barlow: ['Barlow', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Barlow -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: #0a0e1a;
+            font-family: 'Barlow', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0e1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e2d40;
+            border-radius: 10px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Glassmorphic elements */
+        .glass-header {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* User list (quick login) */
+        .user-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .user-quick-btn {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            background: #111827;
+            border: 1px solid #1e2d40;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, transform 0.1s;
+            width: 100%;
+            text-align: left;
+        }
+
+        .user-quick-btn:hover {
+            border-color: #00d4aa;
+            background: #1a2235;
+            transform: translateY(-1px);
+        }
+
+        .user-quick-btn:active {
+            transform: translateY(1px);
+        }
+
+        .user-avatar { font-size: 32px; }
+
+        .user-name {
+            flex: 1;
+            font-size: 15px;
+            font-weight: 600;
+            color: #f1f5f9;
+            font-family: 'Barlow', sans-serif;
+        }
+
+        .user-arrow { color: #64748b; font-size: 18px; transition: color 0.2s; }
+        .user-quick-btn:hover .user-arrow { color: #00d4aa; }
+
+        /* Avatar picker */
+        .avatar-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .avatar-btn {
+            font-size: 26px;
+            padding: 10px;
+            background: #111827;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color 0.15s, transform 0.1s, background-color 0.15s;
+            line-height: 1;
+        }
+
+        .avatar-btn:hover  { border-color: #1e2d40; transform: scale(1.1); }
+        .avatar-btn.selected { border-color: #00d4aa; background: #0d2420; }
+
+        /* Divider */
+        .auth-divider {
+            text-align: center;
+            color: #475569;
+            font-size: 12px;
+            position: relative;
+            margin: 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 35%;
+            height: 1px;
+            background: #1e2d40;
+        }
+        .auth-divider::before { left: 0; }
+        .auth-divider::after  { right: 0; }
+
+        /* Outline button variant */
+        .auth-btn-outline {
+            background: transparent;
+            color: #00d4aa;
+            border: 1px solid #00d4aa;
+        }
+        .auth-btn-outline:hover { background: rgba(0,212,170,0.08); }
+
+        /* Back button */
+        .auth-back {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0;
+            margin-bottom: 12px;
+            font-family: 'Barlow', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+        .auth-back:hover { color: #f1f5f9; }
+    </style>
+</head>
+<body class="h-full flex justify-center text-slate-100 overflow-hidden">
+
+    <!-- Container giới hạn 480px chuẩn Mobile-First nhưng thích ứng tuyệt vời trên Desktop -->
+    <div class="w-full max-w-[480px] h-full flex flex-col bg-darkBg border-x border-borderCool relative shadow-2xl overflow-hidden">
+        
+        <!-- 1. AUTH SCREEN (MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ) -->
+        <div id="auth-screen" class="flex-1 flex flex-col overflow-y-auto px-6 py-8 justify-center space-y-6">
+            
+            <!-- WELCOME VIEW -->
+            <div id="welcome-view" class="space-y-6 flex flex-col items-center">
+                <div class="p-4 bg-gradient-to-tr from-accentBlue to-accentGreen rounded-2xl shadow-xl shadow-accentGreen/10">
+                    <i data-lucide="trending-up" class="w-12 h-12 text-darkBg stroke-[2.5]"></i>
+                </div>
+                <div class="text-center">
+                    <h1 class="text-2xl font-bold tracking-wider text-slate-100 uppercase font-barlow">VNIndex Portfolio</h1>
+                    <p class="text-xs text-textSec mt-1">Quản lý tài sản chứng khoán cá nhân bảo mật</p>
+                </div>
+
+                <!-- Danh sách tài khoản đã có (Quick Login) -->
+                <div id="user-list" class="user-list max-h-[220px] overflow-y-auto pr-1"></div>
+
+                <div class="auth-divider w-full">hoặc</div>
+
+                <div class="w-full space-y-3">
+                    <button class="w-full bg-darkCard border border-borderCool hover:border-accentBlue text-slate-100 py-3.5 rounded-xl text-xs font-bold transition-all shadow-lg hover:brightness-110 active:scale-[0.98]" onclick="showView('login-view')">
+                        Đăng nhập tài khoản khác
+                    </button>
+                    <button class="w-full bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-3.5 rounded-xl text-xs font-bold transition-all shadow-lg hover:brightness-110 active:scale-[0.98]" onclick="showView('register-view')">
+                        + Tạo tài khoản mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- LOGIN VIEW -->
+            <div id="login-view" class="hidden space-y-5">
+                <button class="auth-back" onclick="showView('welcome-view')">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+                </button>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-100 font-barlow">Đăng nhập tài khoản</h2>
+                    <p class="text-xs text-textSec mt-1 font-barlow">Truy cập để quản trị danh mục chứng khoán của riêng bạn</p>
+                </div>
+
+                <div class="space-y-3.5">
+                    <div>
+                        <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Tên đăng nhập</label>
+                        <input type="text" id="login-username" placeholder="Nhập tên đăng nhập của bạn" class="w-full bg-darkCard border border-borderCool rounded-xl text-sm text-slate-100 p-3 focus:outline-none focus:border-accentBlue font-mono">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mật khẩu</label>
+                        <input type="password" id="login-password" placeholder="Mật khẩu của bạn" class="w-full bg-darkCard border border-borderCool rounded-xl text-sm text-slate-100 p-3 focus:outline-none focus:border-accentBlue font-mono">
+                    </div>
+                    <button id="login-btn" class="w-full bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-3.5 rounded-xl text-xs font-bold transition-all shadow-lg hover:brightness-110 active:scale-[0.98]">
+                        Đăng nhập hệ thống
+                    </button>
+                    <p id="login-error" class="text-xs text-accentRed bg-red-950/40 border border-accentRed/30 p-3 rounded-xl hidden text-center font-medium"></p>
+                </div>
+            </div>
+
+            <!-- REGISTER VIEW -->
+            <div id="register-view" class="hidden space-y-5">
+                <button class="auth-back" onclick="showView('welcome-view')">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+                </button>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-100 font-barlow">Tạo tài khoản mới</h2>
+                    <p class="text-xs text-textSec mt-1">Dữ liệu lưu độc lập và mã hóa trên thiết bị này</p>
+                </div>
+
+                <div class="space-y-3.5">
+                    <div>
+                        <label class="text-[10px] text-textSec uppercase tracking-wider block mb-2 text-center">Chọn Linh vật đại diện (Avatar)</label>
+                        <div class="avatar-picker" id="avatar-picker"></div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Tên hiển thị</label>
+                        <input type="text" id="reg-displayname" placeholder="Tên hiển thị (vd: Nguyễn Văn A)" class="w-full bg-darkCard border border-borderCool rounded-xl text-sm text-slate-100 p-3 focus:outline-none focus:border-accentBlue">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Tên đăng nhập (Hệ thống tự sửa thành viết liền không dấu)</label>
+                        <input type="text" id="reg-username" placeholder="Ví dụ: hieuga" class="w-full bg-darkCard border border-borderCool rounded-xl text-sm text-slate-100 p-3 focus:outline-none focus:border-accentBlue font-mono">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mật khẩu</label>
+                            <input type="password" id="reg-password" placeholder="Tối thiểu 4 ký tự" class="w-full bg-darkCard border border-borderCool rounded-xl text-sm text-slate-100 p-3 focus:outline-none focus:border-accentBlue font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Xác nhận</label>
+                            <input type="password" id="reg-confirm" placeholder="Nhập lại mật khẩu" class="w-full bg-darkCard border border-borderCool rounded-xl text-sm text-slate-100 p-3 focus:outline-none focus:border-accentBlue font-mono">
+                        </div>
+                    </div>
+                    <button id="register-btn" class="w-full bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-3.5 rounded-xl text-xs font-bold transition-all shadow-lg hover:brightness-110 active:scale-[0.98]">
+                        Đăng ký & Đăng nhập
+                    </button>
+                    <p id="register-error" class="text-xs text-accentRed bg-red-950/40 border border-accentRed/30 p-3 rounded-xl hidden text-center font-medium"></p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 2. MAIN APPLICATION (APP CHÍNH) -->
+        <div id="app" class="hidden flex-1 flex flex-col overflow-hidden h-full">
+            
+            <!-- HEADER -->
+            <header class="glass-header z-30 sticky top-0 border-b border-borderCool px-4 py-3.5 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <span id="header-avatar-display" class="text-2xl leading-none">🐯</span>
+                    <div>
+                        <h1 id="header-username-display" class="text-sm font-semibold tracking-wider text-slate-100 font-barlow">Tên người dùng</h1>
+                        <span class="text-[9px] text-textSec uppercase tracking-[0.1em] block -mt-0.5">VNINDEX Portfolio v2</span>
+                    </div>
+                </div>
+                
+                <!-- Realtime Indicator & VNINDEX State Widget -->
+                <div class="text-right flex flex-col items-end">
+                    <div id="vnindex-quick" class="flex items-center space-x-1.5 text-xs font-bold text-accentGreen">
+                        <span id="vnindex-quick-val">1,287.45</span>
+                        <span id="vnindex-quick-change" class="text-[10px] font-normal">▲ +5.2 (0.41%)</span>
+                    </div>
+                    <div class="flex items-center space-x-1 mt-0.5" onclick="manualRefreshPrices()" class="cursor-pointer hover:opacity-80">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accentGreen animate-pulse" id="status-dot"></span>
+                        <span class="text-[9px] text-textSec uppercase tracking-wider font-semibold hover:underline" id="status-text">Đang kết nối...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTAINER CHỨA NỘI DUNG CHÍNH (SCROLLABLE) -->
+            <main class="flex-1 overflow-y-auto pb-24 px-4 pt-4" id="main-scroll-container">
+                
+                <!-- BANNER THÔNG BÁO CHẾ ĐỘ GIẢ LẬP KHI BỊ CHẶN CORS (CHỈ HIỂN THỊ KHI LỖI TRÊN LOCAL FILE) -->
+                <div id="simulated-banner" class="hidden bg-accentOrange/10 border border-accentOrange/30 text-accentOrange p-3.5 rounded-2xl mb-4 text-xs leading-relaxed">
+                    <div class="flex items-start gap-2.5">
+                        <span class="text-sm">⚠️</span>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-100">Đang chạy chế độ Giả lập (Offline)</h4>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Trình duyệt chặn kết nối CORS vì bạn đang mở file cục bộ. **Đưa file index.html lên GitHub Pages để kích hoạt lấy giá REALTIME từ sàn TCBS tự động.**</p>
+                            <button onclick="manualRefreshPrices()" class="mt-2 text-[10px] bg-accentOrange/20 hover:bg-accentOrange/30 text-slate-100 px-2.5 py-1 rounded-md font-bold transition-all">Thử kết nối lại</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================== TAB 1: VNINDEX DASHBOARD ================== -->
+                <section id="tab-vnindex" class="tab-content active space-y-4">
+                    
+                    <!-- Score Chiến lược -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-24 h-24 bg-accentBlue/5 rounded-full blur-2xl"></div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[11px] text-textSec uppercase tracking-widest font-semibold">Score Chiến lược VNIndex</span>
+                            <span class="px-2.5 py-0.5 bg-accentGreen/10 border border-accentGreen/20 text-accentGreen rounded-full text-[10px] font-bold uppercase tracking-wider" id="strategy-badge">MUA</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-around">
+                            <!-- Gauge SVG -->
+                            <div class="relative flex items-center justify-center w-28 h-28">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" stroke="#1e2d40" stroke-width="8" fill="transparent" />
+                                    <circle cx="50" cy="50" r="40" stroke="url(#accentGrad)" stroke-width="8" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="62.8" id="gauge-progress" class="transition-all duration-1000 ease-out" />
+                                    <defs>
+                                        <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#3b82f6" />
+                                            <stop offset="100%" stop-color="#00d4aa" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                                <div class="absolute flex flex-col items-center">
+                                    <span class="text-2xl font-bold text-slate-100" id="strategy-score">75</span>
+                                    <span class="text-[9px] text-textSec uppercase tracking-wider">Độ tin cậy</span>
+                                </div>
+                            </div>
+
+                            <!-- 5 Thanh Progress Bar -->
+                            <div class="flex-1 ml-5 space-y-2">
+                                <div>
+                                    <div class="flex justify-between text-[11px] mb-0.5 text-textSec">
+                                        <span>Kỹ thuật (MA/RSI)</span>
+                                        <span class="font-bold text-slate-200">80%</span>
+                                    </div>
+                                    <div class="w-full bg-borderCool h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-accentBlue h-full rounded-full" style="width: 80%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-[11px] mb-0.5 text-textSec">
+                                        <span>Dòng tiền lớn</span>
+                                        <span class="font-bold text-slate-200">70%</span>
+                                    </div>
+                                    <div class="w-full bg-borderCool h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-accentGreen h-full rounded-full" style="width: 70%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-[11px] mb-0.5 text-textSec">
+                                        <span>Timing thị trường</span>
+                                        <span class="font-bold text-slate-200">65%</span>
+                                    </div>
+                                    <div class="w-full bg-borderCool h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-accentOrange h-full rounded-full" style="width: 65%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-[11px] mb-0.5 text-textSec">
+                                        <span>Độ rộng thị trường</span>
+                                        <span class="font-bold text-slate-200">75%</span>
+                                    </div>
+                                    <div class="w-full bg-borderCool h-1.5 rounded-full overflow-hidden">
+                                        <div class="bg-[#8b5cf6] h-full rounded-full" style="width: 75%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nhận định thị trường & Metrics Grid -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-4 space-y-3">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                            <i data-lucide="info" class="w-4 h-4 text-accentBlue"></i> Nhận định thị trường nhanh
+                        </h3>
+                        <div class="bg-darkBg/60 border border-borderCool/60 rounded-xl p-3 text-xs leading-relaxed text-slate-300">
+                            Thị trường duy trì xu hướng <span class="text-accentGreen font-semibold">TĂNG TRƯỞNG TÍCH CỰC</span> ngắn hạn nhờ dòng tiền nâng đỡ từ khối ngoại tại các nhóm ngành trụ (Bank, Thép). Nhà đầu tư có thể gia tăng tỷ trọng khi chỉ số lùi về vùng hỗ trợ <span class="text-accentOrange font-semibold">1,275 - 1,280 điểm</span>. Cảnh giác tại mốc kháng cự mạnh <span class="text-accentRed font-semibold">1,310</span>.
+                        </div>
+
+                        <!-- Metrics Grid 2x2 -->
+                        <div class="grid grid-cols-2 gap-3.5 pt-1">
+                            <div class="bg-darkBg/50 border border-borderCool/80 rounded-xl p-3">
+                                <span class="text-[10px] text-textSec uppercase tracking-wider block">Thanh khoản HoSE</span>
+                                <span class="text-sm font-bold text-slate-200 mt-0.5 block" id="val-liquidity">19.4K tỷ VND</span>
+                            </div>
+                            <div class="bg-darkBg/50 border border-borderCool/80 rounded-xl p-3">
+                                <span class="text-[10px] text-textSec uppercase tracking-wider block">Khối ngoại ròng</span>
+                                <span class="text-sm font-bold text-accentGreen mt-0.5 block" id="val-foreign">+280 tỷ VND</span>
+                            </div>
+                            <div class="bg-darkBg/50 border border-borderCool/80 rounded-xl p-3">
+                                <span class="text-[10px] text-textSec uppercase tracking-wider block">Độ rộng tăng/giảm</span>
+                                <span class="text-sm font-bold text-slate-200 mt-0.5 block" id="val-breadth">62% / 28%</span>
+                            </div>
+                            <div class="bg-darkBg/50 border border-borderCool/80 rounded-xl p-3">
+                                <span class="text-[10px] text-textSec uppercase tracking-wider block">Rủi ro Margin</span>
+                                <span class="text-sm font-bold text-accentGreen mt-0.5 block" id="val-margin">Thấp</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tín hiệu Kỹ thuật chính -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-4 space-y-3">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                            <i data-lucide="radio" class="w-4 h-4 text-accentOrange"></i> Tín hiệu đột phá & Cảnh báo
+                        </h3>
+                        <div class="space-y-2.5">
+                            <div class="flex items-start gap-2.5 bg-darkBg/30 p-2.5 rounded-xl border border-borderCool/45">
+                                <span class="text-accentGreen text-sm mt-0.5">✅</span>
+                                <div>
+                                    <h4 class="text-xs font-semibold text-slate-200">Đường MA20 cắt lên MA50</h4>
+                                    <p class="text-[10px] text-textSec">Xu hướng tăng trung hạn được xác lập vững chắc.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2.5 bg-darkBg/30 p-2.5 rounded-xl border border-borderCool/45">
+                                <span class="text-accentOrange text-sm mt-0.5">⚠️</span>
+                                <div>
+                                    <h4 class="text-xs font-semibold text-slate-200">RSI tiếp cận vùng quá mua (68.5)</h4>
+                                    <p class="text-[10px] text-textSec">Chỉ số tiệm cận vùng rung lắc cục bộ, hạn chế mua đuổi giá cao.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2.5 bg-darkBg/30 p-2.5 rounded-xl border border-borderCool/45">
+                                <span class="text-accentRed text-sm mt-0.5">❌</span>
+                                <div>
+                                    <h4 class="text-xs font-semibold text-slate-200">Phân kỳ âm MACD khung H1</h4>
+                                    <p class="text-[10px] text-textSec">Có tín hiệu điều chỉnh ngắn hạn tại các mã trụ trong phiên chiều.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sức mạnh nhóm ngành & Cổ phiếu nổi bật -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-4 space-y-3">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4 text-accentGreen"></i> Bản đồ sức mạnh nhóm ngành
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between border-b border-borderCool/50 pb-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 rounded-full bg-accentGreen"></span>
+                                    <span class="text-xs font-semibold text-slate-300">Dẫn dắt thị trường</span>
+                                </div>
+                                <span class="text-[11px] text-accentGreen font-mono">Bất Động Sản, Ngân Hàng</span>
+                            </div>
+                            <div class="flex items-center justify-between border-b border-borderCool/50 pb-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 rounded-full bg-accentBlue"></span>
+                                    <span class="text-xs font-semibold text-slate-300">Đang nổi lên</span>
+                            </div>
+                                <span class="text-[11px] text-accentBlue font-mono">Thép, Chứng Khoán</span>
+                            </div>
+                            <div class="flex items-center justify-between border-b border-borderCool/50 pb-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 rounded-full bg-accentOrange"></span>
+                                    <span class="text-xs font-semibold text-slate-300">Cần trọng rủi ro</span>
+                                </div>
+                                <span class="text-[11px] text-accentOrange font-mono">Dầu Khí, Bán Lẻ</span>
+                            </div>
+                            <div class="flex items-center justify-between pb-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 rounded-full bg-accentRed"></span>
+                                    <span class="text-xs font-semibold text-slate-300">Tuyệt đối tránh</span>
+                                </div>
+                                <span class="text-[11px] text-accentRed font-mono">Phân Bón, Thủy Sản</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Embed VNIndex Kenvinzone / Iframe -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                                <i data-lucide="globe" class="w-4 h-4 text-accentBlue"></i> Biểu đồ trực quan (kenvinzone)
+                            </h3>
+                            <button onclick="toggleIframe()" class="text-[10px] text-accentBlue hover:underline flex items-center gap-1">
+                                <span>Bật/Tắt</span> <i data-lucide="eye" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                        <div class="w-full h-80 rounded-xl overflow-hidden border border-borderCool bg-darkBg relative hidden" id="iframe-container">
+                            <div class="absolute inset-0 flex flex-col items-center justify-center space-y-3" id="iframe-loader">
+                                <div class="w-8 h-8 border-4 border-accentBlue border-t-transparent rounded-full animate-spin"></div>
+                                <span class="text-[11px] text-textSec">Đang tải bảng giá VNIndex...</span>
+                            </div>
+                            <iframe src="https://vnindex.kenvinzone.com" class="w-full h-full border-0 relative z-10 opacity-0 transition-opacity duration-300" id="vnindex-iframe" onload="iframeLoaded()"></iframe>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- ================== TAB 2: PORTFOLIO (DANH MỤC) ================== -->
+                <section id="tab-portfolio" class="tab-content space-y-4">
+                    
+                    <!-- Tổng tài sản & PnL Dashboard -->
+                    <div class="bg-gradient-to-br from-darkCard to-darkCardHover border border-borderCool rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-accentGreen/10 rounded-full blur-3xl"></div>
+                        
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <span class="text-[11px] text-textSec uppercase tracking-widest font-semibold block">Tổng Giá Trị Tài Sản</span>
+                                <span class="text-3xl font-bold font-mono tracking-tight text-white mt-1 block" id="total-assets">0 ₫</span>
+                            </div>
+                            <button onclick="openStockModal()" class="flex items-center space-x-1.5 bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg shadow-accentGreen/10 hover:brightness-110 active:scale-95 transition-all">
+                                <i data-lucide="plus" class="w-4 h-4 stroke-[2.5]"></i>
+                                <span>Thêm cổ phiếu</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 border-t border-borderCool/60 pt-4">
+                            <div>
+                                <span class="text-[10px] text-textSec uppercase tracking-wider block">Lãi/Lỗ Hiện Tại</span>
+                                <span class="text-base font-bold font-mono" id="portfolio-total-pnl">0 ₫</span>
+                                <span class="text-xs text-textSec font-mono block" id="portfolio-total-pnl-percent">(0%)</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-textSec uppercase tracking-wider block">Tổng Giá Vốn Đầu Tư</span>
+                                <span class="text-base font-bold font-mono text-slate-200 mt-0.5 block" id="total-investment">0 ₫</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh mục cổ phiếu đang nắm giữ -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-textSec uppercase tracking-widest font-semibold" id="portfolio-count">Danh mục (0 mã)</span>
+                            
+                            <!-- Sort & Refresh Controls -->
+                            <div class="flex items-center space-x-3">
+                                <select id="portfolio-sort" onchange="renderPortfolio()" class="bg-darkCard border border-borderCool rounded-lg text-[10px] text-slate-300 px-2 py-1 focus:outline-none focus:border-accentBlue">
+                                    <option value="pnlDesc">Lãi nhiều nhất</option>
+                                    <option value="pnlAsc">Lỗ nhiều nhất</option>
+                                    <option value="valueDesc">Giá trị lớn nhất</option>
+                                    <option value="symbol">Mã CK (A-Z)</option>
+                                </select>
+                                <button onclick="manualRefreshPrices()" class="p-1.5 bg-darkCard border border-borderCool rounded-lg text-slate-300 hover:text-accentGreen transition-colors active:scale-90" title="Cập nhật giá">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="price-refresh-icon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Placeholder rỗng -->
+                        <div id="portfolio-empty" class="bg-darkCard border border-dashed border-borderCool rounded-2xl py-12 flex flex-col items-center justify-center text-center px-4">
+                            <div class="p-3 bg-borderCool/30 rounded-full mb-3">
+                                <i data-lucide="folder-open" class="w-6 h-6 text-textSec"></i>
+                            </div>
+                            <h4 class="text-xs font-semibold text-slate-300 mb-1">Chưa có cổ phiếu nào</h4>
+                            <p class="text-[10px] text-textSec max-w-[240px]">Hãy thêm cổ phiếu đang nắm giữ để tự động theo dõi giá thời gian thực từ TCBS API.</p>
+                        </div>
+
+                        <!-- Danh sách cổ phiếu (Render qua JS) -->
+                        <div id="portfolio-list" class="space-y-3"></div>
+                    </div>
+
+                </section>
+
+                <!-- ================== TAB 3: TRANSACTION HISTORY ================== -->
+                <section id="tab-history" class="tab-content space-y-4">
+                    
+                    <!-- Bộ lọc giao dịch -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold">Bộ lọc Giao dịch</h3>
+                            <button onclick="openTxModal()" class="flex items-center space-x-1.5 bg-darkBg border border-borderCool hover:border-accentBlue text-accentBlue px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Ghi chép giao dịch</span>
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2">
+                            <select id="filter-type" onchange="renderHistory()" class="bg-darkBg border border-borderCool rounded-lg text-[11px] text-slate-200 px-2.5 py-1.5 focus:outline-none focus:border-accentBlue">
+                                <option value="ALL">Tất cả Loại</option>
+                                <option value="BUY">Mua (🟢)</option>
+                                <option value="SELL">Bán (🔴)</option>
+                                <option value="TAKE_PROFIT">Chốt lời (⭐)</option>
+                            </select>
+                            <select id="filter-month" onchange="renderHistory()" class="bg-darkBg border border-borderCool rounded-lg text-[11px] text-slate-200 px-2.5 py-1.5 focus:outline-none focus:border-accentBlue">
+                                <option value="ALL">Tất cả Tháng</option>
+                                <!-- Dynamic months will be inserted here -->
+                            </select>
+                            <input type="text" id="filter-symbol" oninput="renderHistory()" placeholder="Mã CK..." class="bg-darkBg border border-borderCool rounded-lg text-[11px] text-slate-200 px-2.5 py-1.5 placeholder-textSec focus:outline-none focus:border-accentBlue uppercase">
+                        </div>
+                    </div>
+
+                    <!-- Tổng kết giao dịch tháng -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl overflow-hidden transition-all duration-300" id="monthly-summary-card">
+                        <button onclick="toggleMonthlySummary()" class="w-full px-4 py-3 flex items-center justify-between bg-darkBg/40 border-b border-borderCool/30 hover:bg-darkBg/60">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="calendar" class="w-4 h-4 text-accentBlue"></i>
+                                <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Tổng kết hiệu quả giao dịch</span>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-textSec transform transition-transform duration-300" id="monthly-summary-chevron"></i>
+                        </button>
+                        <div class="p-4 space-y-3.5 hidden" id="monthly-summary-content">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="bg-darkBg/60 border border-borderCool p-2.5 rounded-xl">
+                                    <span class="text-[9px] text-textSec uppercase tracking-wider block">Tổng số lệnh</span>
+                                    <span class="text-xs font-bold text-slate-100 mt-1 block" id="sum-total-orders">0 lệnh</span>
+                                </div>
+                                <div class="bg-darkBg/60 border border-borderCool p-2.5 rounded-xl">
+                                    <span class="text-[9px] text-textSec uppercase tracking-wider block">Giá trị đã mua</span>
+                                    <span class="text-xs font-bold text-slate-100 mt-1 block font-mono" id="sum-total-buy">0đ</span>
+                                </div>
+                                <div class="bg-darkBg/60 border border-borderCool p-2.5 rounded-xl">
+                                    <span class="text-[9px] text-textSec uppercase tracking-wider block">Thực lãi/Lỗ</span>
+                                    <span class="text-xs font-bold text-accentGreen mt-1 block font-mono" id="sum-net-profit">0đ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách lịch sử giao dịch -->
+                    <div class="space-y-3">
+                        <span class="text-xs text-textSec uppercase tracking-widest font-semibold block" id="history-count">Nhật ký giao dịch (0)</span>
+                        
+                        <!-- Placeholder rỗng -->
+                        <div id="history-empty" class="bg-darkCard border border-dashed border-borderCool rounded-2xl py-12 flex flex-col items-center justify-center text-center px-4">
+                            <div class="p-3 bg-borderCool/30 rounded-full mb-3">
+                                <i data-lucide="file-text" class="w-6 h-6 text-textSec"></i>
+                            </div>
+                            <h4 class="text-xs font-semibold text-slate-300 mb-1">Chưa ghi nhận giao dịch</h4>
+                            <p class="text-[10px] text-textSec max-w-[240px]">Lịch sử giao dịch sẽ lưu trữ và hỗ trợ phân tích hiệu năng quản lý tài sản của bạn.</p>
+                        </div>
+
+                        <!-- Danh sách các giao dịch (Render qua JS) -->
+                        <div id="history-list" class="space-y-2.5"></div>
+                    </div>
+
+                </section>
+
+                <!-- ================== TAB 4: CONFIGURATION (CÀI ĐẶT) ================== -->
+                <section id="tab-settings" class="tab-content space-y-4">
+                    
+                    <!-- THÔNG TIN TÀI KHOẢN (ĐẶC TẢ MỚI BỔ SUNG) -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-5 space-y-4">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5 border-b border-borderCool/50 pb-2">
+                            <i data-lucide="user" class="w-4 h-4 text-accentGreen"></i> Tài khoản cá nhân
+                        </h3>
+                        
+                        <div class="flex items-center space-x-3.5 bg-darkBg/50 p-3.5 rounded-xl border border-borderCool/80">
+                            <span id="settings-avatar" class="text-3xl leading-none">🐯</span>
+                            <div>
+                                <div id="settings-displayname" class="font-bold text-slate-100 text-sm">Tên Người Dùng</div>
+                                <div id="settings-username" class="text-xs text-textSec font-mono">@username</div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2.5 pt-1">
+                            <button onclick="openChangePasswordModal()" class="w-full flex items-center justify-between bg-darkBg border border-borderCool hover:border-accentOrange text-slate-200 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all">
+                                <span class="flex items-center gap-2"><i data-lucide="key" class="w-4 h-4 text-accentOrange"></i> Đổi mật khẩu tài khoản</span>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-textSec"></i>
+                            </button>
+                            <button onclick="confirmLogout()" class="w-full flex items-center justify-between bg-accentRed/10 border border-accentRed/30 hover:bg-accentRed hover:text-darkBg text-accentRed px-4 py-2.5 rounded-xl text-xs font-bold transition-all">
+                                <span class="flex items-center gap-2"><i data-lucide="log-out" class="w-4 h-4"></i> Đăng xuất phiên làm việc</span>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-textSec"></i>
+                            </button>
+                            <button onclick="confirmDeleteAccount()" class="w-full flex items-center justify-between bg-transparent border border-accentRed/20 hover:border-accentRed hover:bg-accentRed/5 text-accentRed/80 px-4 py-2.5 rounded-xl text-[11px] font-semibold transition-all">
+                                <span class="flex items-center gap-2"><i data-lucide="user-x" class="w-4 h-4"></i> Xóa tài khoản vĩnh viễn</span>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-textSec"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quản trị dữ liệu sao lưu -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-5 space-y-4">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5 border-b border-borderCool/50 pb-2">
+                            <i data-lucide="database" class="w-4 h-4 text-accentBlue"></i> Quản trị dữ liệu sao lưu (JSON)
+                        </h3>
+                        <p class="text-[11px] text-textSec leading-relaxed">Hãy sao lưu định kỳ. Dữ liệu tài khoản của bạn được cô lập hoàn toàn trên thiết bị này.</p>
+                        
+                        <div class="grid grid-cols-2 gap-3 pt-1">
+                            <button onclick="exportData()" class="flex items-center justify-center gap-2 bg-darkBg border border-borderCool hover:border-accentBlue text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition-all">
+                                <i data-lucide="download" class="w-4 h-4 text-accentBlue"></i>
+                                <span>Xuất File Sao Lưu</span>
+                            </button>
+                            <button onclick="triggerImport()" class="flex items-center justify-center gap-2 bg-darkBg border border-borderCool hover:border-accentGreen text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition-all">
+                                <i data-lucide="upload" class="w-4 h-4 text-accentGreen"></i>
+                                <span>Nhập Dữ Liệu</span>
+                            </button>
+                            <input type="file" id="import-file-input" onchange="importData(event)" class="hidden" accept=".json">
+                        </div>
+                    </div>
+
+                    <!-- Tuỳ chỉnh & Tham số cảnh báo -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-5 space-y-4">
+                        <h3 class="text-xs text-textSec uppercase tracking-wider font-semibold flex items-center gap-1.5 border-b border-borderCool/50 pb-2">
+                            <i data-lucide="sliders" class="w-4 h-4 text-accentOrange"></i> Tham số & Cảnh báo
+                        </h3>
+                        <div class="space-y-4">
+                            <!-- Tắt/Bật auto-refresh -->
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="text-xs font-semibold text-slate-200">Tự động cập nhật giá</h4>
+                                    <p class="text-[10px] text-textSec">Refresh giá mỗi 30 giây trong giờ giao dịch.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="setting-auto-refresh" checked onchange="toggleAutoRefreshSetting()" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-borderCool peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accentGreen"></div>
+                                </label>
+                            </div>
+
+                            <!-- Cảnh báo chốt lời/cắt lỗ -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mục tiêu chốt lời (%)</label>
+                                    <input type="number" id="setting-target-profit" value="15" onchange="saveSettingsToStorage(); renderPortfolio();" class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-200 p-2.5 focus:outline-none focus:border-accentGreen font-mono">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Ngưỡng cắt lỗ (%)</label>
+                                    <input type="number" id="setting-stop-loss" value="7" onchange="saveSettingsToStorage(); renderPortfolio();" class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-200 p-2.5 focus:outline-none focus:border-accentRed font-mono">
+                                </div>
+                            </div>
+
+                            <!-- Custom URL feed -->
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">URL Nguồn VNINDEX Feed</label>
+                                <input type="text" id="setting-feed-url" value="https://vnindex.kenvinzone.com" onchange="saveSettingsToStorage();" class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-200 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Đặt lại ứng dụng -->
+                    <div class="bg-darkCard border border-borderCool rounded-2xl p-5 space-y-4">
+                        <h3 class="text-xs text-accentRed uppercase tracking-wider font-semibold flex items-center gap-1.5 border-b border-borderCool/30 pb-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i> Khu vực nguy hiểm
+                        </h3>
+                        <p class="text-[10px] text-textSec leading-relaxed">Hành động này sẽ xóa dữ liệu danh mục & lịch sử của **tài khoản hiện tại**. Tài khoản vẫn được giữ nguyên.</p>
+                        <button onclick="confirmResetData()" class="w-full bg-accentRed/10 border border-accentRed/30 hover:bg-accentRed hover:text-darkBg text-accentRed py-2.5 rounded-xl text-xs font-bold transition-all">
+                            Xóa toàn bộ dữ liệu tài sản của tôi
+                        </button>
+                    </div>
+
+                </section>
+
+            </main>
+
+            <!-- ================== MODAL: THÊM / SỬA CỔ PHIẾU (PORTFOLIO) ================== -->
+            <div id="stock-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkBg/80 backdrop-filter backdrop-blur-sm hidden">
+                <div class="bg-darkCard border border-borderCool rounded-2xl w-full max-w-[400px] overflow-hidden shadow-2xl transition-all scale-95 duration-200" id="stock-modal-card">
+                    <div class="px-5 py-4 border-b border-borderCool flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-100" id="stock-modal-title">Thêm Cổ Phiếu Nắm Giữ</h3>
+                        <button onclick="closeStockModal()" class="text-textSec hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <form id="stock-form" onsubmit="saveStock(event)" class="p-5 space-y-4">
+                        <input type="hidden" id="stock-id">
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mã Cổ Phiếu *</label>
+                            <input type="text" id="stock-symbol" placeholder="Ví dụ: VCB, FPT, HPG" required class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue uppercase font-mono">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Số Lượng *</label>
+                                <input type="number" id="stock-qty" placeholder="Ví dụ: 1000" min="1" required class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Giá Vốn Mua (đ)*</label>
+                                <input type="number" id="stock-cost" placeholder="Ví dụ: 85000" min="100" required class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Ngày Mua</label>
+                                <input type="date" id="stock-date" class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Ghi Chú</label>
+                                <input type="text" id="stock-note" placeholder="Target, cắt lỗ..." class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue">
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 pt-2">
+                            <button type="button" onclick="closeStockModal()" class="flex-1 border border-borderCool text-slate-300 py-2.5 rounded-xl text-xs font-semibold hover:bg-borderCool/30 transition-colors">Hủy bỏ</button>
+                            <button type="submit" class="flex-1 bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-2.5 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all">Lưu cổ phiếu</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ================== MODAL: GHI CHÉP GIAO DỊCH (HISTORY) ================== -->
+            <div id="tx-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkBg/80 backdrop-filter backdrop-blur-sm hidden">
+                <div class="bg-darkCard border border-borderCool rounded-2xl w-full max-w-[400px] overflow-hidden shadow-2xl transition-all scale-95 duration-200" id="tx-modal-card">
+                    <div class="px-5 py-4 border-b border-borderCool flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-100">Ghi Chép Giao Dịch</h3>
+                        <button onclick="closeTxModal()" class="text-textSec hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <form id="tx-form" onsubmit="saveTransaction(event)" class="p-5 space-y-4">
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Loại Giao Dịch</label>
+                            <div class="grid grid-cols-3 gap-2" id="tx-type-selector">
+                                <button type="button" onclick="selectTxType('BUY')" id="btn-tx-buy" class="py-2 rounded-xl text-xs font-bold border-2 border-accentGreen bg-accentGreen/10 text-accentGreen transition-all">MUA 🟢</button>
+                                <button type="button" onclick="selectTxType('SELL')" id="btn-tx-sell" class="py-2 rounded-xl text-xs font-bold border border-borderCool bg-transparent text-textSec hover:border-accentRed/50 transition-all">BÁN 🔴</button>
+                                <button type="button" onclick="selectTxType('TAKE_PROFIT')" id="btn-tx-tp" class="py-2 rounded-xl text-xs font-bold border border-borderCool bg-transparent text-textSec hover:border-accentOrange/50 transition-all">CHỐT LỜI ⭐</button>
+                            </div>
+                            <input type="hidden" id="tx-type" value="BUY">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mã Cổ Phiếu *</label>
+                            <input type="text" id="tx-symbol" placeholder="Ví dụ: TCB" required class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue uppercase font-mono">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Số Lượng *</label>
+                                <input type="number" id="tx-qty" placeholder="Ví dụ: 500" min="1" required class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Đơn Giá Giao Dịch *</label>
+                                <input type="number" id="tx-price" placeholder="Ví dụ: 32000" min="100" required class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Ngày Giao Dịch</label>
+                                <input type="date" id="tx-date" required class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Phí & Thuế giao dịch (đ)</label>
+                                <input type="number" id="tx-fee" value="0" min="0" class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Ghi chú giao dịch</label>
+                            <input type="text" id="tx-note" placeholder="Ví dụ: Chốt mua theo tín hiệu MA20..." class="w-full bg-darkBg border border-borderCool rounded-xl text-xs text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue">
+                        </div>
+                        
+                        <div class="flex items-center space-x-3 pt-2">
+                            <button type="button" onclick="closeTxModal()" class="flex-1 border border-borderCool text-slate-300 py-2.5 rounded-xl text-xs font-semibold hover:bg-borderCool/30 transition-colors">Hủy bỏ</button>
+                            <button type="submit" class="flex-1 bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-2.5 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all">Lưu giao dịch</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ================== MODAL: XÁC NHẬN XOÁ DỮ LIỆU CẢNH BÁO ================== -->
+            <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkBg/80 backdrop-filter backdrop-blur-sm hidden">
+                <div class="bg-darkCard border border-borderCool rounded-2xl w-full max-w-[360px] p-5 shadow-2xl text-center space-y-4">
+                    <div class="w-12 h-12 bg-accentRed/10 border border-accentRed/30 text-accentRed rounded-full flex items-center justify-center mx-auto">
+                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-100">Xác nhận xóa tài sản?</h3>
+                        <p class="text-[11px] text-textSec mt-1">Toàn bộ dữ liệu của danh mục và lịch sử giao dịch của bạn sẽ biến mất vĩnh viễn khỏi trình duyệt. Hành động này không thể hoàn tác.</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="closeConfirmModal()" class="flex-1 border border-borderCool text-slate-300 py-2 rounded-xl text-xs font-semibold hover:bg-borderCool/30 transition-all">Không, Hủy</button>
+                        <button onclick="resetAllData()" class="flex-1 bg-accentRed text-darkBg py-2 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 transition-all">Có, Xóa Sết</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================== MODAL: ĐỔI MẬT KHẨU (SETTINGS) ================== -->
+            <div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkBg/80 backdrop-filter backdrop-blur-sm hidden">
+                <div class="bg-darkCard border border-borderCool rounded-2xl w-full max-w-[400px] overflow-hidden shadow-2xl transition-all scale-95 duration-200" id="password-modal-card">
+                    <div class="px-5 py-4 border-b border-borderCool flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-100 font-barlow">Đổi Mật Khẩu</h3>
+                        <button onclick="closeChangePasswordModal()" class="text-textSec hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <form id="password-form" onsubmit="saveNewPassword(event)" class="p-5 space-y-4">
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mật khẩu hiện tại</label>
+                            <input type="password" id="pass-old" required placeholder="Nhập mật khẩu hiện tại" class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Mật khẩu mới (tối thiểu 4 ký tự)</label>
+                            <input type="password" id="pass-new" required placeholder="Nhập mật khẩu mới" class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Xác nhận mật khẩu mới</label>
+                            <input type="password" id="pass-confirm" required placeholder="Xác nhận mật khẩu mới" class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentBlue font-mono">
+                        </div>
+                        <p id="password-modal-error" class="text-xs text-accentRed bg-red-950/40 border border-accentRed/30 p-2.5 rounded-xl hidden text-center font-medium"></p>
+                        <div class="flex items-center space-x-3 pt-2">
+                            <button type="button" onclick="closeChangePasswordModal()" class="flex-1 border border-borderCool text-slate-300 py-2.5 rounded-xl text-xs font-semibold hover:bg-borderCool/30 transition-colors">Hủy bỏ</button>
+                            <button type="submit" class="flex-1 bg-gradient-to-r from-accentBlue to-accentGreen text-darkBg py-2.5 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all">Đổi mật khẩu</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ================== MODAL: XOÁ TÀI KHOẢN VĨNH VIỄN ================== -->
+            <div id="delete-account-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkBg/80 backdrop-filter backdrop-blur-sm hidden">
+                <div class="bg-darkCard border border-borderCool rounded-2xl w-full max-w-[400px] overflow-hidden shadow-2xl transition-all scale-95 duration-200" id="delete-account-card">
+                    <div class="px-5 py-4 border-b border-borderCool flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-accentRed font-barlow">Xóa tài khoản vĩnh viễn</h3>
+                        <button onclick="closeDeleteAccountModal()" class="text-textSec hover:text-white p-1 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <form id="delete-account-form" onsubmit="executeDeleteAccount(event)" class="p-5 space-y-4">
+                        <div class="bg-accentRed/10 border border-accentRed/20 p-3.5 rounded-xl text-xs text-accentRed leading-relaxed font-barlow">
+                            Cảnh báo: Hành động này xóa vĩnh viễn toàn bộ cấu hình, lịch sử giao dịch và danh mục của tài khoản hiện tại trên máy này.
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-textSec uppercase tracking-wider block mb-1">Nhập mật khẩu để xác nhận xóa</label>
+                            <input type="password" id="delete-pass-confirm" required placeholder="Mật khẩu tài khoản" class="w-full bg-darkBg border border-borderCool rounded-xl text-sm text-slate-100 p-2.5 focus:outline-none focus:border-accentRed font-mono">
+                        </div>
+                        <p id="delete-account-error" class="text-xs text-accentRed bg-red-950/40 border border-accentRed/30 p-2.5 rounded-xl hidden text-center font-medium"></p>
+                        <div class="flex items-center space-x-3 pt-2">
+                            <button type="button" onclick="closeDeleteAccountModal()" class="flex-1 border border-borderCool text-slate-300 py-2.5 rounded-xl text-xs font-semibold hover:bg-borderCool/30 transition-colors">Hủy</button>
+                            <button type="submit" class="flex-1 bg-accentRed text-darkBg py-2.5 rounded-xl text-xs font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all">Xóa vĩnh viễn</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TOAST NOTIFICATION POPUP SYSTEM -->
+            <div id="toast-container" class="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none flex flex-col space-y-2 w-[340px]"></div>
+
+            <!-- BOTTOM NAVIGATION BAR (STICKY NAV) -->
+            <nav class="absolute bottom-0 left-0 right-0 z-40 bg-darkCard/95 border-t border-borderCool px-2 py-2.5 flex justify-around items-center backdrop-blur-md">
+                
+                <button onclick="switchTab('vnindex')" id="nav-vnindex" class="nav-item flex flex-col items-center space-y-1 py-1 px-3 text-accentBlue transition-all">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="text-[10px] font-semibold tracking-wider uppercase">VNIndex</span>
+                </button>
+                
+                <button onclick="switchTab('portfolio')" id="nav-portfolio" class="nav-item flex flex-col items-center space-y-1 py-1 px-3 text-textSec hover:text-slate-200 transition-all">
+                    <i data-lucide="pie-chart" class="w-5 h-5"></i>
+                    <span class="text-[10px] font-semibold tracking-wider uppercase">Danh Mục</span>
+                </button>
+                
+                <button onclick="switchTab('history')" id="nav-history" class="nav-item flex flex-col items-center space-y-1 py-1 px-3 text-textSec hover:text-slate-200 transition-all">
+                    <i data-lucide="history" class="w-5 h-5"></i>
+                    <span class="text-[10px] font-semibold tracking-wider uppercase">Lịch Sử</span>
+                </button>
+                
+                <button onclick="switchTab('settings')" id="nav-settings" class="nav-item flex flex-col items-center space-y-1 py-1 px-3 text-textSec hover:text-slate-200 transition-all">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="text-[10px] font-semibold tracking-wider uppercase">Cài Đặt</span>
+                </button>
+                
+            </nav>
+
+        </div>
+
+    </div>
+
+    <!-- CORE LOGIC JAVASCRIPT SYSTEM WITH MULTI-USER AUTH -->
+    <script>
+        // ============================================
+        // MULTI-USER AUTH MODULE
+        // ============================================
+        const AUTH = {
+            USERS_KEY: 'app_users_registry',
+            SESSION_KEY: 'app_session_current',
+            SESSION_DURATION: 8 * 60 * 60 * 1000,
+            MAX_ATTEMPTS: 5,
+            LOCKOUT_DURATION: 15 * 60 * 1000,
+
+            AVATARS: ['🐯','🦊','🐼','🦁','🐸','🦋','🐬','🦅','🌟','🔥'],
+
+            // Hash password
+            async hashPassword(password, username) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password + username + 'kvz_salt_2024');
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            },
+
+            // Lấy danh sách users
+            getUsers() {
+                const raw = localStorage.getItem(this.USERS_KEY);
+                return raw ? JSON.parse(raw) : { users: [] };
+            },
+
+            // Lưu danh sách users
+            saveUsers(data) {
+                localStorage.setItem(this.USERS_KEY, JSON.stringify(data));
+            },
+
+            // Lấy user theo username
+            findUser(username) {
+                const { users } = this.getUsers();
+                return users.find(u => u.username === username.toLowerCase().trim());
+            },
+
+            // Validate username
+            validateUsername(username) {
+                if (!username || username.length < 3) throw new Error('Tên đăng nhập tối thiểu 3 ký tự');
+                if (username.length > 20) throw new Error('Tên đăng nhập tối đa 20 ký tự');
+                if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+                    throw new Error('Tên đăng nhập chỉ được dùng chữ cái tiếng Anh không dấu, số và dấu gạch dưới, không chứa tiếng Việt hay khoảng trắng.');
+                }
+                return username.toLowerCase().trim();
+            },
+
+            // Tạo tài khoản mới
+            async register(username, displayName, password, avatar) {
+                const cleanUsername = this.validateUsername(username);
+                if (password.length < 4) throw new Error('Mật khẩu tối thiểu 4 ký tự');
+                if (!displayName || displayName.trim().length < 1) throw new Error('Vui lòng nhập tên hiển thị');
+
+                const registry = this.getUsers();
+
+                if (registry.users.find(u => u.username === cleanUsername)) {
+                    throw new Error('Tên đăng nhập đã tồn tại');
+                }
+
+                const hash = await this.hashPassword(password, cleanUsername);
+                registry.users.push({
+                    username: cleanUsername,
+                    displayName: displayName.trim(),
+                    passwordHash: hash,
+                    avatar: avatar || '🐯',
+                    createdAt: Date.now(),
+                    lastLogin: null,
+                    failedAttempts: 0,
+                    lockedUntil: null
+                });
+
+                this.saveUsers(registry);
+                this.createSession(registry.users[registry.users.length - 1]);
+            },
+
+            // Đăng nhập
+            async login(username, password) {
+                const cleanUsername = username.toLowerCase().trim();
+                const registry = this.getUsers();
+                const userIdx = registry.users.findIndex(u => u.username === cleanUsername);
+
+                if (userIdx === -1) throw new Error('Tài khoản không tồn tại');
+
+                const user = registry.users[userIdx];
+
+                // Kiểm tra lockout
+                if (user.lockedUntil && Date.now() < user.lockedUntil) {
+                    const remaining = Math.ceil((user.lockedUntil - Date.now()) / 60000);
+                    throw new Error(`Tạm khóa ${remaining} phút nữa`);
+                }
+
+                const hash = await this.hashPassword(password, cleanUsername);
+
+                if (hash !== user.passwordHash) {
+                    user.failedAttempts = (user.failedAttempts || 0) + 1;
+                    if (user.failedAttempts >= this.MAX_ATTEMPTS) {
+                        user.lockedUntil = Date.now() + this.LOCKOUT_DURATION;
+                        user.failedAttempts = 0;
+                        this.saveUsers(registry);
+                        throw new Error('Sai quá nhiều lần, tạm khóa 15 phút');
+                    }
+                    this.saveUsers(registry);
+                    const left = this.MAX_ATTEMPTS - user.failedAttempts;
+                    throw new Error(`Sai mật khẩu (còn ${left} lần thử)`);
+                }
+
+                // Đúng
+                user.failedAttempts = 0;
+                user.lockedUntil = null;
+                user.lastLogin = Date.now();
+                this.saveUsers(registry);
+                this.createSession(user);
+            },
+
+            // Tạo session
+            createSession(user) {
+                sessionStorage.setItem(this.SESSION_KEY, JSON.stringify({
+                    username: user.username,
+                    displayName: user.displayName,
+                    avatar: user.avatar,
+                    loggedInAt: Date.now(),
+                    expiresAt: Date.now() + this.SESSION_DURATION
+                }));
+            },
+
+            // Lấy session hiện tại
+            getSession() {
+                const raw = sessionStorage.getItem(this.SESSION_KEY);
+                if (!raw) return null;
+                const session = JSON.parse(raw);
+                if (Date.now() > session.expiresAt) {
+                    sessionStorage.removeItem(this.SESSION_KEY);
+                    return null;
+                }
+                return session;
+            },
+
+            // Kiểm tra đã login chưa
+            isAuthenticated() {
+                return this.getSession() !== null;
+            },
+
+            // Lấy username hiện tại (dùng để prefix data key)
+            currentUsername() {
+                const session = this.getSession();
+                return session ? session.username : null;
+            },
+
+            // Data keys theo user hiện tại
+            dataKey(type) {
+                const username = this.currentUsername();
+                if (!username) throw new Error('Chưa đăng nhập');
+                return `${type}_${username}`;
+            },
+
+            // Đăng xuất
+            logout() {
+                sessionStorage.removeItem(this.SESSION_KEY);
+            },
+
+            // Xóa tài khoản (và toàn bộ data)
+            async deleteAccount(password) {
+                const session = this.getSession();
+                if (!session) throw new Error('Chưa đăng nhập');
+
+                await this.login(session.username, password); // verify
+
+                // Xóa data
+                localStorage.removeItem(`portfolio_${session.username}`);
+                localStorage.removeItem(`transactions_${session.username}`);
+                localStorage.removeItem(`settings_${session.username}`);
+
+                // Xóa khỏi registry
+                const registry = this.getUsers();
+                registry.users = registry.users.filter(u => u.username !== session.username);
+                this.saveUsers(registry);
+
+                this.logout();
+            },
+
+            // Đổi mật khẩu
+            async changePassword(oldPassword, newPassword) {
+                const session = this.getSession();
+                if (!session) throw new Error('Chưa đăng nhập');
+                if (newPassword.length < 4) throw new Error('Mật khẩu mới tối thiểu 4 ký tự');
+
+                await this.login(session.username, oldPassword); // verify
+
+                const hash = await this.hashPassword(newPassword, session.username);
+                const registry = this.getUsers();
+                const user = registry.users.find(u => u.username === session.username);
+                user.passwordHash = hash;
+                this.saveUsers(registry);
+            }
+        };
+
+        // TRẠNG THÁI TOÀN CỤC CỦA THIẾT BỊ / STATE MANAGEMENT
+        let portfolio = [];
+        let transactions = [];
+        let prices = {};
+        let activeTab = 'vnindex';
+        let autoRefreshInterval = null;
+        let connectionMode = 'REALTIME'; // Có 3 mức độ: 'REALTIME' (Trực tiếp), 'PROXY' (Trung gian), 'MOCK' (Giả lập)
+
+        const CORS_PROXY = 'https://corsproxy.io/?';
+
+        // ===== KHỞI ĐỘNG HỆ THỐNG =====
+        window.addEventListener('DOMContentLoaded', () => {
+            if (AUTH.isAuthenticated()) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                initApp();
+            } else {
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('app').classList.add('hidden');
+                initAuthUI();
+            }
+        });
+
+        // KHỞI ĐỘNG APP VỚI USER ĐÃ ĐĂNG NHẬP
+        function initApp() {
+            lucide.createIcons();
+            
+            // Tải dữ liệu từ Storage cô lập theo user
+            loadDataFromStorage();
+            updateHeaderUser();
+            updateSettingsUserInfo();
+            
+            // Thiết lập giá trị ngày mặc định cho các Form Modal
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('stock-date').value = today;
+            document.getElementById('tx-date').value = today;
+
+            // Chạy chu kỳ kết nối TCBS lấy giá thời gian thực
+            fetchAndUpdatePrices();
+            setupAutoRefresh();
+
+            // Render dữ liệu ban đầu
+            renderPortfolio();
+            renderHistory();
+            renderMonthFilterOptions();
+            
+            // Cập nhật VNIndex Score strategic animation
+            updateGaugeScore(75);
+            
+            // Tạo thông báo chào mừng
+            const session = AUTH.getSession();
+            showToast(`Chào mừng ${session.displayName} trở lại!`, 'success');
+        }
+
+        // TẢI DỮ LIỆU TỪ LOCALSTORAGE (THEO PREFIX TÀI KHOẢN)
+        function loadDataFromStorage() {
+            try {
+                if (!AUTH.isAuthenticated()) return;
+
+                const storedPortfolio = localStorage.getItem(AUTH.dataKey('portfolio'));
+                if (storedPortfolio) {
+                    portfolio = JSON.parse(storedPortfolio).stocks || [];
+                } else {
+                    portfolio = [];
+                }
+
+                const storedTx = localStorage.getItem(AUTH.dataKey('transactions'));
+                if (storedTx) {
+                    transactions = JSON.parse(storedTx).transactions || [];
+                } else {
+                    transactions = [];
+                }
+                
+                // Đồng bộ cấu hình cá nhân
+                const storedSettings = localStorage.getItem(AUTH.dataKey('settings'));
+                if (storedSettings) {
+                    const settings = JSON.parse(storedSettings);
+                    document.getElementById('setting-auto-refresh').checked = settings.autoRefresh !== false;
+                    document.getElementById('setting-target-profit').value = settings.targetProfit || 15;
+                    document.getElementById('setting-stop-loss').value = settings.stopLoss || 7;
+                    document.getElementById('setting-feed-url').value = settings.feedUrl || "https://vnindex.kenvinzone.com";
+                } else {
+                    // Cài đặt mặc định nếu chưa có cấu hình
+                    document.getElementById('setting-auto-refresh').checked = true;
+                    document.getElementById('setting-target-profit').value = 15;
+                    document.getElementById('setting-stop-loss').value = 7;
+                    document.getElementById('setting-feed-url').value = "https://vnindex.kenvinzone.com";
+                }
+                
+            } catch (err) {
+                console.error("Lỗi khi tải dữ liệu LocalStorage", err);
+                showToast("Lỗi định dạng cấu trúc dữ liệu LocalStorage", "error");
+            }
+        }
+
+        // LƯU TRỮ DỮ LIỆU VÀO LOCALSTORAGE
+        function savePortfolioToStorage() {
+            if (!AUTH.isAuthenticated()) return;
+            localStorage.setItem(AUTH.dataKey('portfolio'), JSON.stringify({
+                stocks: portfolio,
+                updatedAt: new Date().toISOString()
+            }));
+        }
+
+        function saveTransactionsToStorage() {
+            if (!AUTH.isAuthenticated()) return;
+            localStorage.setItem(AUTH.dataKey('transactions'), JSON.stringify({
+                transactions: transactions
+            }));
+        }
+
+        function saveSettingsToStorage() {
+            if (!AUTH.isAuthenticated()) return;
+            const settingsObj = {
+                targetProfit: document.getElementById('setting-target-profit').value,
+                stopLoss: document.getElementById('setting-stop-loss').value,
+                feedUrl: document.getElementById('setting-feed-url').value,
+                autoRefresh: document.getElementById('setting-auto-refresh').checked
+            };
+            localStorage.setItem(AUTH.dataKey('settings'), JSON.stringify(settingsObj));
+        }
+
+        // CẬP NHẬT HEADER USER ĐĂNG NHẬP
+        function updateHeaderUser() {
+            const session = AUTH.getSession();
+            if (!session) return;
+            document.getElementById('header-avatar-display').textContent = session.avatar;
+            document.getElementById('header-username-display').textContent = session.displayName;
+        }
+
+        // CẬP NHẬT TAB SETTINGS
+        function updateSettingsUserInfo() {
+            const session = AUTH.getSession();
+            if (!session) return;
+            document.getElementById('settings-avatar').textContent = session.avatar;
+            document.getElementById('settings-displayname').textContent = session.displayName;
+            document.getElementById('settings-username').textContent = '@' + session.username;
+        }
+
+        // ĐIỀU HƯỚNG TAB CHÍNH / TAB ROUTER
+        function switchTab(tabId) {
+            activeTab = tabId;
+            
+            // Ẩn toàn bộ Tab
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Hiện Tab được chọn
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            // Cập nhật phong cách Navigation Button
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                btn.classList.remove('text-accentBlue');
+                btn.classList.add('text-textSec');
+            });
+            document.getElementById(`nav-${tabId}`).classList.add('text-accentBlue');
+            document.getElementById(`nav-${tabId}`).classList.remove('text-textSec');
+
+            // Scroll về đầu
+            document.getElementById('main-scroll-container').scrollTop = 0;
+            
+            lucide.createIcons();
+        }
+
+        // HIỂN THỊ THÔNG BÁO TOAST TRÊN MÀN HÌNH
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-3.5 rounded-xl text-xs font-semibold flex items-center space-x-2.5 shadow-2xl border transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+            
+            let bgClass = 'bg-darkCard border-borderCool text-slate-100';
+            let icon = 'info';
+            
+            if (type === 'success') {
+                bgClass = 'bg-darkCard border-accentGreen/30 text-accentGreen';
+                icon = 'check-circle';
+            } else if (type === 'error') {
+                bgClass = 'bg-darkCard border-accentRed/30 text-accentRed';
+                icon = 'alert-triangle';
+            } else if (type === 'warn') {
+                bgClass = 'bg-darkCard border-accentOrange/30 text-accentOrange';
+                icon = 'alert-circle';
+            }
+
+            toast.className += ` ${bgClass}`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Kích hoạt animation
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 50);
+
+            // Tự động xóa sau 3.5 giây
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-8px]', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // HOẠT HỌA CIRCULAR SCORE GAUGE
+        function updateGaugeScore(score) {
+            const gauge = document.getElementById('gauge-progress');
+            const scoreLabel = document.getElementById('strategy-score');
+            const badge = document.getElementById('strategy-badge');
+            
+            // Chu vi hình tròn r=40 là ~251.2
+            const maxOffset = 251.2;
+            const offset = maxOffset - (score / 100) * maxOffset;
+            gauge.style.strokeDashoffset = offset;
+            
+            scoreLabel.innerText = score;
+
+            if (score >= 70) {
+                badge.innerText = "MUA MẠNH";
+                badge.className = "px-2.5 py-0.5 bg-accentGreen/10 border border-accentGreen/20 text-accentGreen rounded-full text-[10px] font-bold uppercase tracking-wider";
+            } else if (score >= 50) {
+                badge.innerText = "HOLD / THEO DÕI";
+                badge.className = "px-2.5 py-0.5 bg-accentOrange/10 border border-accentOrange/20 text-accentOrange rounded-full text-[10px] font-bold uppercase tracking-wider";
+            } else {
+                badge.innerText = "BÁN / PHÒNG THỦ";
+                badge.className = "px-2.5 py-0.5 bg-accentRed/10 border border-accentRed/20 text-accentRed rounded-full text-[10px] font-bold uppercase tracking-wider";
+            }
+        }
+
+        // HIỂN THỊ VÀ TẢI BẢNG GIÁ IFRAME KENVINZONE
+        let isIframeOpened = false;
+        function toggleIframe() {
+            const container = document.getElementById('iframe-container');
+            isIframeOpened = !isIframeOpened;
+            if (isIframeOpened) {
+                container.classList.remove('hidden');
+                document.getElementById('vnindex-iframe').src = document.getElementById('setting-feed-url').value;
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function iframeLoaded() {
+            document.getElementById('iframe-loader').classList.add('hidden');
+            document.getElementById('vnindex-iframe').classList.remove('opacity-0');
+        }
+
+        // THỜI GIAN GIAO DỊCH VIỆT NAM (9:00-11:30 & 13:00-15:00 GMT+7)
+        function isTradingHour() {
+            const now = new Date();
+            const vnTime = new Date(now.toLocaleString('en-US', {timeZone: 'Asia/Ho_Chi_Minh'}));
+            const day = vnTime.getDay();
+            
+            if (day === 0 || day === 6) return false;
+
+            const h = vnTime.getHours();
+            const m = vnTime.getMinutes();
+
+            const morningSession = (h === 9 && m >= 0) || (h === 10) || (h === 11 && m <= 30);
+            const afternoonSession = (h === 13 && m >= 0) || (h === 14) || (h === 15 && m === 0);
+
+            return morningSession || afternoonSession;
+        }
+
+        // TỰ ĐỘNG CẬP NHẬT TRONG GIỜ GIAO DỊCH
+        function setupAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            
+            autoRefreshInterval = setInterval(() => {
+                const autoEnabled = document.getElementById('setting-auto-refresh').checked;
+                if (autoEnabled && isTradingHour()) {
+                    fetchAndUpdatePrices();
+                } else if (autoEnabled && connectionMode === 'MOCK') {
+                    // Nếu đang ở chế độ Giả lập, tự động chạy cập nhật biến động giá trị giả lập
+                    activateMockPrices();
+                }
+            }, 30000);
+        }
+
+        function toggleAutoRefreshSetting() {
+            const isEnabled = document.getElementById('setting-auto-refresh').checked;
+            saveSettingsToStorage();
+            showToast(isEnabled ? 'Đã bật tự động cập nhật giá' : 'Đã tắt tự động cập nhật', 'warn');
+            setupAutoRefresh();
+        }
+
+        // XOAY VÒNG PROXY DỰ PHÒNG CHUẨN HOÁ CHỐNG CHẶN CORS (SIÊU BẢO MẬT & ĐỘ TIN CẬY CAO)
+        async function fetchWithProxy(url) {
+            // Định nghĩa danh sách nguồn kéo dữ liệu:
+            // 1. Gọi TRỰC TIẾP (Sẽ chạy xuất sắc trên GitHub Pages / localhost)
+            // 2. Gọi qua Proxy bọc thô AllOrigins
+            // 3. Gọi qua Proxy CORSProxy.io
+            // 4. Gọi qua API AllOrigins bọc JSON
+            // 5. Gọi qua Codetabs Proxy
+            const proxySources = [
+                { url: url, wrapped: false, type: 'REALTIME' },
+                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
+                { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' },
+                { url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, wrapped: true, type: 'PROXY' },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, wrapped: false, type: 'PROXY' }
+            ];
+
+            for (const src of proxySources) {
+                try {
+                    console.log(`Đang kết nối thử qua: ${src.url}`);
+                    const response = await fetch(src.url);
+                    if (!response.ok) continue;
+
+                    const text = await response.text();
+                    if (!text || text.trim() === '') continue;
+
+                    let parsedData = null;
+                    if (src.wrapped) {
+                        const wrappedJson = JSON.parse(text);
+                        if (wrappedJson && wrappedJson.contents) {
+                            parsedData = JSON.parse(wrappedJson.contents);
+                        }
+                    } else {
+                        try {
+                            parsedData = JSON.parse(text);
+                        } catch (e) {
+                            // Phòng hờ bọc JSON ngoài dự kiến
+                            const wrappedJson = JSON.parse(text);
+                            if (wrappedJson && wrappedJson.contents) {
+                                parsedData = JSON.parse(wrappedJson.contents);
+                            } else {
+                                throw e;
+                            }
+                        }
+                    }
+
+                    if (parsedData && parsedData.data) {
+                        console.log(`Kết nối thành công! Kiểu dữ liệu: ${src.type}`);
+                        connectionMode = src.type; // Lưu trạng thái kết nối thật thành công
+                        document.getElementById('simulated-banner').classList.add('hidden');
+                        return parsedData;
+                    }
+                } catch (err) {
+                    console.warn(`Lỗi kết nối cổng: ${src.url}`, err);
+                }
+            }
+            throw new Error("Không có kết nối mạng ổn định hoặc bị chặn CORS hoàn toàn.");
+        }
+
+        // KÍCH HOẠT CHẾ ĐỘ GIẢ LẬP GIÁ THỜI GIAN THỰC (CHỈ DÙNG LÀM PHƯƠNG ÁN DỰ PHÒNG CUỐI CÙNG TRÊN LOCAL FILE)
+        function activateMockPrices() {
+            connectionMode = 'MOCK';
+            document.getElementById('status-text').innerText = "Simulated (Giả lập)";
+            document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentOrange";
+            
+            // Hiển thị Banner hướng dẫn gỡ lỗi CORS cục bộ
+            document.getElementById('simulated-banner').classList.remove('hidden');
+
+            const symbols = [...new Set([
+                'VCB', 
+                ...portfolio.map(s => s.symbol.toUpperCase()),
+                ...transactions.map(t => t.symbol.toUpperCase())
+            ])];
+
+            const baselinePrices = {
+                'VCB': 92000, 'FPT': 136000, 'HPG': 29000, 'TCB': 24000, 
+                'SSI': 35000, 'VND': 19500, 'MWG': 62000, 'VIC': 43000, 
+                'VHM': 41000, 'FTS': 58000, 'STB': 28000, 'HSG': 21000,
+                'GMD': 82000, 'DGC': 118000, 'KBC': 31000, 'VRE': 22000
+            };
+
+            const mockDataArray = symbols.map(symbol => {
+                let basePrice = 50000;
+                if (baselinePrices[symbol]) {
+                    basePrice = baselinePrices[symbol];
+                } else {
+                    const stock = portfolio.find(s => s.symbol === symbol);
+                    if (stock && stock.avgCost) basePrice = stock.avgCost;
+                }
+
+                if (!window.mockBaseRegistry) window.mockBaseRegistry = {};
+                if (!window.mockBaseRegistry[symbol]) window.mockBaseRegistry[symbol] = basePrice;
+
+                const originBase = window.mockBaseRegistry[symbol];
+                const drift = (Math.random() * 3) - 1.5; 
+                const lastPrice = Math.round(originBase * (1 + drift / 100));
+                const priceChange = lastPrice - originBase;
+                const percentChange = parseFloat(drift.toFixed(2));
+
+                return {
+                    ticker: symbol,
+                    lastPrice: lastPrice,
+                    priceChange: priceChange,
+                    percentChange: percentChange
+                };
+            });
+
+            processPriceData(mockDataArray);
+        }
+
+        // LẤY DỮ LIỆU GIÁ REALTIME TỪ TCBS API
+        async function fetchAndUpdatePrices() {
+            const symbols = [...new Set([
+                'VCB', 
+                ...portfolio.map(s => s.symbol.toUpperCase()),
+                ...transactions.map(t => t.symbol.toUpperCase())
+            ])];
+
+            document.getElementById('status-text').innerText = "Đang kết nối...";
+            document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentOrange animate-ping";
+
+            const apiURL = `https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/batch-quote?tickers=${symbols.join(',')}`;
+            
+            try {
+                const result = await fetchWithProxy(apiURL);
+                processPriceData(result.data);
+            } catch (err) {
+                console.error("Lỗi lấy giá: ", err);
+                // Chỉ chạy chế độ giả lập nếu toàn bộ các cổng kết nối API thực bị lỗi (Chạy offline cục bộ)
+                activateMockPrices();
+            }
+        }
+
+        function processPriceData(dataArray) {
+            if (!dataArray || dataArray.length === 0) return;
+
+            dataArray.forEach(stock => {
+                const rawPrice = stock.lastPrice;
+                const normalizedPrice = rawPrice < 1000 ? rawPrice * 1000 : rawPrice;
+                const rawChange = stock.priceChange;
+                const normalizedChange = (rawChange < 1000 && rawChange > -1000) ? rawChange * 1000 : rawChange;
+
+                prices[stock.ticker] = {
+                    lastPrice: normalizedPrice,
+                    percentChange: stock.percentChange,
+                    priceChange: normalizedChange
+                };
+            });
+
+            // Cập nhật chỉ số VNINDEX giả định trên thanh Header dựa vào mã neo VCB
+            if (prices['VCB']) {
+                const vcbData = prices['VCB'];
+                const changeSymbol = vcbData.percentChange >= 0 ? '▲' : '▼';
+                const vState = vcbData.percentChange >= 0 ? 'text-accentGreen' : 'text-accentRed';
+                
+                document.getElementById('vnindex-quick').className = `flex items-center space-x-1.5 text-xs font-bold ${vState}`;
+                document.getElementById('vnindex-quick-change').innerText = `${changeSymbol} ${vcbData.priceChange >= 0 ? '+' : ''}${vcbData.priceChange.toLocaleString()}đ (${vcbData.percentChange}%)`;
+                document.getElementById('vnindex-quick-val').innerText = vcbData.lastPrice.toLocaleString() + 'đ';
+            }
+
+            // Hiển thị nhãn kết nối tương ứng dựa vào kết quả kiểm tra Origin thực tế
+            if (connectionMode === 'REALTIME') {
+                document.getElementById('status-text').innerText = "Mạng REALTIME (Trực tiếp)";
+                document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-accentGreen";
+            } else if (connectionMode === 'PROXY') {
+                document.getElementById('status-text').innerText = "Qua Proxy (Trung gian)";
+                document.getElementById('status-dot').className = "w-1.5 h-1.5 rounded-full bg-[#3b82f6]";
+            }
+
+            renderPortfolio();
+        }
+
+        function manualRefreshPrices() {
+            const icon = document.getElementById('price-refresh-icon');
+            if (icon) icon.classList.add('animate-spin');
+            
+            fetchAndUpdatePrices().then(() => {
+                setTimeout(() => {
+                    if (icon) icon.classList.remove('animate-spin');
+                }, 600);
+                if (connectionMode === 'MOCK') {
+                    showToast("Đang hoạt động trong chế độ giả lập cục bộ.", "warn");
+                } else if (connectionMode === 'REALTIME') {
+                    showToast("Đã cập nhật giá REALTIME từ sàn TCBS!", "success");
+                } else {
+                    showToast("Kết nối thành công qua máy chủ Proxy trung gian!", "success");
+                }
+            });
+        }
+
+        // RENDER DANH MỤC CỔ PHIẾU (TAB 2)
+        function renderPortfolio() {
+            const listContainer = document.getElementById('portfolio-list');
+            const emptyContainer = document.getElementById('portfolio-empty');
+            const countLabel = document.getElementById('portfolio-count');
+            
+            if (portfolio.length === 0) {
+                listContainer.innerHTML = '';
+                emptyContainer.classList.remove('hidden');
+                countLabel.innerText = "Danh mục (0 mã)";
+                updateSummary(0, 0, 0);
+                return;
+            }
+
+            emptyContainer.classList.add('hidden');
+            countLabel.innerText = `Danh mục (${portfolio.length} mã)`;
+
+            let totalInvestment = 0;
+            let totalCurrentValue = 0;
+
+            const sortVal = document.getElementById('portfolio-sort').value;
+            let sortedPortfolio = [...portfolio];
+
+            sortedPortfolio.sort((a, b) => {
+                const priceA = prices[a.symbol]?.lastPrice || a.avgCost;
+                const priceB = prices[b.symbol]?.lastPrice || b.avgCost;
+                const valA = a.quantity * priceA;
+                const valB = b.quantity * priceB;
+                const pnlA = valA - (a.quantity * a.avgCost);
+                const pnlB = valB - (b.quantity * b.avgCost);
+                const pnlPercentA = a.avgCost > 0 ? (pnlA / (a.quantity * a.avgCost)) * 100 : 0;
+                const pnlPercentB = b.avgCost > 0 ? (pnlB / (b.quantity * b.avgCost)) * 100 : 0;
+
+                if (sortVal === 'pnlDesc') return pnlPercentB - pnlPercentA;
+                if (sortVal === 'pnlAsc') return pnlPercentA - pnlPercentB;
+                if (sortVal === 'valueDesc') return valB - valA;
+                if (sortVal === 'symbol') return a.symbol.localeCompare(b.symbol);
+                return 0;
+            });
+
+            listContainer.innerHTML = '';
+
+            sortedPortfolio.forEach(stock => {
+                const marketPrice = prices[stock.symbol]?.lastPrice || stock.avgCost;
+                const totalCost = stock.quantity * stock.avgCost;
+                const currentVal = stock.quantity * marketPrice;
+                const pnl = currentVal - totalCost;
+                const pnlPercent = stock.avgCost > 0 ? (pnl / totalCost) * 100 : 0;
+
+                totalInvestment += totalCost;
+                totalCurrentValue += currentVal;
+
+                let pnlColor = 'text-slate-400';
+                let pnlSymbol = '';
+                let bgBorder = 'border-borderCool';
+                if (pnl > 0) {
+                    pnlColor = 'text-accentGreen';
+                    pnlSymbol = '+';
+                    bgBorder = 'border-accentGreen/10 hover:border-accentGreen/30';
+                } else if (pnl < 0) {
+                    pnlColor = 'text-accentRed';
+                    bgBorder = 'border-accentRed/10 hover:border-accentRed/30';
+                }
+
+                // Cảnh báo chốt lời/cắt lỗ theo setup cá nhân
+                const thresholdProfit = parseFloat(document.getElementById('setting-target-profit').value) || 15;
+                const thresholdLoss = parseFloat(document.getElementById('setting-stop-loss').value) || 7;
+                let alertBadgeHtml = '';
+                
+                if (pnlPercent >= thresholdProfit) {
+                    alertBadgeHtml = `<span class="px-1.5 py-0.5 bg-accentGreen/10 border border-accentGreen/30 text-accentGreen rounded-md text-[9px] font-bold">CHỐT LỜI CẢNH BÁO</span>`;
+                } else if (pnlPercent <= -thresholdLoss) {
+                    alertBadgeHtml = `<span class="px-1.5 py-0.5 bg-accentRed/10 border border-accentRed/30 text-accentRed rounded-md text-[9px] font-bold">CẮT LỖ CẢNH BÁO</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `bg-darkCard border ${bgBorder} rounded-2xl p-4 transition-all duration-200 hover:bg-darkCardHover relative`;
+                card.id = `portfolio-card-${stock.id}`;
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-bold tracking-wider text-slate-100 font-mono">${stock.symbol}</span>
+                                ${alertBadgeHtml}
+                            </div>
+                            <span class="text-[10px] text-textSec block mt-0.5">SL: ${stock.quantity.toLocaleString()} cp | Giá vốn: ${stock.avgCost.toLocaleString()}đ</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm font-bold font-mono text-slate-200">${marketPrice.toLocaleString()}đ</span>
+                            <span class="text-[10px] text-textSec block mt-0.5">Giá trị: ${currentVal.toLocaleString()}đ</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3.5 flex justify-between items-center border-t border-borderCool/40 pt-2.5">
+                        <div class="flex items-center space-x-1">
+                            <span class="text-[10px] text-textSec">Hiệu suất:</span>
+                            <span class="text-xs font-bold font-mono ${pnlColor}">${pnlSymbol}${pnl.toLocaleString()}đ (${pnlSymbol}${pnlPercent.toFixed(2)}%)</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentBlue hover:border-accentBlue rounded-lg transition-colors">
+                                <i data-lucide="edit-3" class="w-3 h-3"></i>
+                            </button>
+                            <button onclick="deleteStock('${stock.id}')" class="p-1 bg-darkBg border border-borderCool text-textSec hover:text-accentRed hover:border-accentRed rounded-lg transition-colors">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+
+            lucide.createIcons();
+            updateSummary(totalInvestment, totalCurrentValue, totalCurrentValue - totalInvestment);
+        }
+
+        // CẬP NHẬT TỔNG QUAN TÀI SẢN TRÊN HEADER TAB PORTFOLIO
+        function updateSummary(totalInvestment, totalCurrentValue, totalPnL) {
+            const totalAssetsEl = document.getElementById('total-assets');
+            const totalInvEl = document.getElementById('total-investment');
+            const totalPnlEl = document.getElementById('portfolio-total-pnl');
+            const totalPnlPercentEl = document.getElementById('portfolio-total-pnl-percent');
+
+            totalAssetsEl.innerText = `${totalCurrentValue.toLocaleString()} ₫`;
+            totalInvEl.innerText = `${totalInvestment.toLocaleString()} ₫`;
+
+            let pnlColor = 'text-slate-400';
+            let pnlSymbol = '';
+            if (totalPnL > 0) {
+                pnlColor = 'text-accentGreen';
+                pnlSymbol = '+';
+            } else if (totalPnL < 0) {
+                pnlColor = 'text-accentRed';
+            }
+
+            totalPnlEl.innerText = `${pnlSymbol}${totalPnL.toLocaleString()} ₫`;
+            totalPnlEl.className = `text-base font-bold font-mono ${pnlColor}`;
+            
+            const pnlPercent = totalInvestment > 0 ? (totalPnL / totalInvestment) * 100 : 0;
+            totalPnlPercentEl.innerText = `(${pnlSymbol}${pnlPercent.toFixed(2)}%)`;
+            totalPnlPercentEl.className = `text-xs font-mono block ${pnlColor}`;
+        }
+
+        // THÊM & SỬA CỔ PHIẾU MODAL
+        function openStockModal(stockId = null) {
+            const modal = document.getElementById('stock-modal');
+            const card = document.getElementById('stock-modal-card');
+            const title = document.getElementById('stock-modal-title');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => card.classList.remove('scale-95', 'opacity-0'), 10);
+
+            if (stockId) {
+                const stock = portfolio.find(s => s.id === stockId);
+                title.innerText = "Chỉnh Sửa Cổ Phiếu";
+                document.getElementById('stock-id').value = stock.id;
+                document.getElementById('stock-symbol').value = stock.symbol;
+                document.getElementById('stock-qty').value = stock.quantity;
+                document.getElementById('stock-cost').value = stock.avgCost;
+                document.getElementById('stock-date').value = stock.buyDate || '';
+                document.getElementById('stock-note').value = stock.note || '';
+                document.getElementById('stock-symbol').disabled = true;
+            } else {
+                title.innerText = "Thêm Cổ Phiếu Nắm Giữ";
+                document.getElementById('stock-form').reset();
+                document.getElementById('stock-id').value = '';
+                document.getElementById('stock-symbol').disabled = false;
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('stock-date').value = today;
+            }
+        }
+
+        function closeStockModal() {
+            const card = document.getElementById('stock-modal-card');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                document.getElementById('stock-modal').classList.add('hidden');
+            }, 150);
+        }
+
+        function saveStock(event) {
+            event.preventDefault();
+            const id = document.getElementById('stock-id').value;
+            const symbol = document.getElementById('stock-symbol').value.toUpperCase().trim();
+            const qty = parseInt(document.getElementById('stock-qty').value);
+            const cost = parseInt(document.getElementById('stock-cost').value);
+            const buyDate = document.getElementById('stock-date').value;
+            const note = document.getElementById('stock-note').value.trim();
+
+            if (!symbol) return;
+
+            if (id) {
+                const index = portfolio.findIndex(s => s.id === id);
+                if (index !== -1) {
+                    portfolio[index] = { ...portfolio[index], quantity: qty, avgCost: cost, buyDate, note };
+                    showToast("Đã cập nhật danh mục của bạn!", "success");
+                }
+            } else {
+                const existingIndex = portfolio.findIndex(s => s.symbol === symbol);
+                if (existingIndex !== -1) {
+                    const current = portfolio[existingIndex];
+                    const newQty = current.quantity + qty;
+                    const newAvgCost = Math.round(((current.quantity * current.avgCost) + (qty * cost)) / newQty);
+                    portfolio[existingIndex] = {
+                        ...current,
+                        quantity: newQty,
+                        avgCost: newAvgCost,
+                        note: note || current.note
+                    };
+                    showToast(`Tích luỹ mã ${symbol} thành công!`, 'success');
+                } else {
+                    portfolio.push({
+                        id: crypto.randomUUID(),
+                        symbol,
+                        quantity: qty,
+                        avgCost: cost,
+                        buyDate,
+                        note
+                    });
+                    showToast(`Đã thêm mới mã ${symbol}!`, 'success');
+                }
+            }
+
+            savePortfolioToStorage();
+            closeStockModal();
+            fetchAndUpdatePrices();
+            renderPortfolio();
+        }
+
+        function editStock(stockId) {
+            openStockModal(stockId);
+        }
+
+        function deleteStock(stockId) {
+            const stock = portfolio.find(s => s.id === stockId);
+            if (!stock) return;
+            
+            portfolio = portfolio.filter(s => s.id !== stockId);
+            savePortfolioToStorage();
+            renderPortfolio();
+            showToast(`Đã gỡ mã ${stock.symbol} khỏi danh mục`, 'warn');
+        }
+
+        // ==========================================
+        // TÍNH NĂNG NHẬT KÝ LỊCH SỬ GIAO DỊCH (TAB 3)
+        // ==========================================
+
+        let isMonthlySummaryOpened = false;
+        function toggleMonthlySummary() {
+            const content = document.getElementById('monthly-summary-content');
+            const chevron = document.getElementById('monthly-summary-chevron');
+            isMonthlySummaryOpened = !isMonthlySummaryOpened;
+            
+            if (isMonthlySummaryOpened) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
+        }
+
+        function renderMonthFilterOptions() {
+            const select = document.getElementById('filter-month');
+            if (!select) return;
+            const months = [...new Set(transactions.map(t => {
+                if (!t.date) return null;
+                const d = new Date(t.date);
+                return `${d.getMonth() + 1}/${d.getFullYear()}`;
+            }))].filter(Boolean);
+
+            select.innerHTML = '<option value="ALL">Tất cả Tháng</option>';
+            months.forEach(m => {
+                select.innerHTML += `<option value="${m}">Tháng ${m}</option>`;
+            });
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            const empty = document.getElementById('history-empty');
+            const count = document.getElementById('history-count');
+
+            const filterType = document.getElementById('filter-type').value;
+            const filterMonth = document.getElementById('filter-month').value;
+            const filterSymbol = document.getElementById('filter-symbol').value.toUpperCase().trim();
+
+            let filteredTxs = [...transactions];
+
+            if (filterType !== 'ALL') {
+                filteredTxs = filteredTxs.filter(t => t.type === filterType);
+            }
+
+            if (filterMonth !== 'ALL') {
+                filteredTxs = filteredTxs.filter(t => {
+                    if (!t.date) return false;
+                    const d = new Date(t.date);
+                    return `${d.getMonth() + 1}/${d.getFullYear()}` === filterMonth;
+                });
+            }
+
+            if (filterSymbol) {
+                filteredTxs = filteredTxs.filter(t => t.symbol.includes(filterSymbol));
+            }
+
+            filteredTxs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            count.innerText = `Nhật ký giao dịch (${filteredTxs.length})`;
+
+            if (filteredTxs.length === 0) {
+                container.innerHTML = '';
+                empty.classList.remove('hidden');
+                updateMonthlySummaryStats([]);
+                return;
+            }
+
+            empty.classList.add('hidden');
+            container.innerHTML = '';
+
+            filteredTxs.forEach(tx => {
+                let badgeClass = '';
+                let typeText = '';
+                
+                if (tx.type === 'BUY') {
+                    badgeClass = 'bg-accentGreen/10 text-accentGreen border border-accentGreen/20';
+                    typeText = 'MUA';
+                } else if (tx.type === 'SELL') {
+                    badgeClass = 'bg-accentRed/10 text-accentRed border border-accentRed/20';
+                    typeText = 'BÁN';
+                } else {
+                    badgeClass = 'bg-accentOrange/10 text-accentOrange border border-accentOrange/20';
+                    typeText = 'CHỐT LỜI';
+                }
+
+                const txDateStr = tx.date ? new Date(tx.date).toLocaleDateString('vi-VN') : '---';
+                const totalValue = tx.quantity * tx.price;
+
+                const card = document.createElement('div');
+                card.className = "bg-darkCard border border-borderCool/70 rounded-2xl p-3.5 flex justify-between items-center";
+                card.innerHTML = `
+                    <div class="space-y-1.5">
+                        <div class="flex items-center space-x-2">
+                            <span class="px-2 py-0.5 rounded-lg text-[9px] font-bold ${badgeClass}">${typeText}</span>
+                            <span class="text-xs font-bold text-slate-100 font-mono">${tx.symbol}</span>
+                            <span class="text-[10px] text-textSec">${txDateStr}</span>
+                        </div>
+                        <div class="text-[11px] text-textSec">
+                            <span>${tx.quantity.toLocaleString()} cp × ${tx.price.toLocaleString()}đ</span>
+                        </div>
+                    </div>
+                    <div class="text-right space-y-1">
+                        <span class="text-xs font-bold text-slate-200 font-mono block">${totalValue.toLocaleString()}đ</span>
+                        <div class="flex items-center justify-end space-x-1.5">
+                            <span class="text-[9px] text-textSec italic">${tx.note || 'Không ghi chú'}</span>
+                            <button onclick="deleteTransaction('${tx.id}')" class="p-1 text-textSec hover:text-accentRed transition-colors">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+            updateMonthlySummaryStats(filteredTxs);
+        }
+
+        function updateMonthlySummaryStats(txArray) {
+            const sumOrders = document.getElementById('sum-total-orders');
+            const sumBuy = document.getElementById('sum-total-buy');
+            const sumNetProfit = document.getElementById('sum-net-profit');
+
+            if (txArray.length === 0) {
+                sumOrders.innerText = '0 lệnh';
+                sumBuy.innerText = '0đ';
+                sumNetProfit.innerText = '0đ';
+                sumNetProfit.className = "text-xs font-bold text-slate-300 mt-1 block font-mono";
+                return;
+            }
+
+            let ordersCount = txArray.length;
+            let buyVal = 0;
+            let sellVal = 0;
+
+            txArray.forEach(t => {
+                const total = t.quantity * t.price;
+                if (t.type === 'BUY') {
+                    buyVal += total;
+                } else if (t.type === 'SELL' || t.type === 'TAKE_PROFIT') {
+                    sellVal += total;
+                }
+            });
+
+            const netProfit = sellVal - buyVal;
+
+            sumOrders.innerText = `${ordersCount} lệnh`;
+            sumBuy.innerText = `${buyVal.toLocaleString()}đ`;
+            
+            let profitColor = 'text-slate-300';
+            let prefix = '';
+            if (netProfit > 0) {
+                profitColor = 'text-accentGreen';
+                prefix = '+';
+            } else if (netProfit < 0) {
+                profitColor = 'text-accentRed';
+            }
+
+            sumNetProfit.innerText = `${prefix}${netProfit.toLocaleString()}đ`;
+            sumNetProfit.className = `text-xs font-bold ${profitColor} mt-1 block font-mono`;
+        }
+
+        // MODAL GHI CHÉP GIAO DỊCH
+        function openTxModal() {
+            const modal = document.getElementById('tx-modal');
+            const card = document.getElementById('tx-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => card.classList.remove('scale-95', 'opacity-0'), 10);
+            
+            document.getElementById('tx-form').reset();
+            selectTxType('BUY');
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tx-date').value = today;
+        }
+
+        function closeTxModal() {
+            const card = document.getElementById('tx-modal-card');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                document.getElementById('tx-modal').classList.add('hidden');
+            }, 150);
+        }
+
+        function selectTxType(type) {
+            document.getElementById('tx-type').value = type;
+            
+            const btnBuy = document.getElementById('btn-tx-buy');
+            const btnSell = document.getElementById('btn-tx-sell');
+            const btnTp = document.getElementById('btn-tx-tp');
+
+            btnBuy.className = "py-2 rounded-xl text-xs font-bold border border-borderCool bg-transparent text-textSec hover:border-accentGreen/50 transition-all";
+            btnSell.className = "py-2 rounded-xl text-xs font-bold border border-borderCool bg-transparent text-textSec hover:border-accentRed/50 transition-all";
+            btnTp.className = "py-2 rounded-xl text-xs font-bold border border-borderCool bg-transparent text-textSec hover:border-accentOrange/50 transition-all";
+
+            if (type === 'BUY') {
+                btnBuy.className = "py-2 rounded-xl text-xs font-bold border-2 border-accentGreen bg-accentGreen/10 text-accentGreen transition-all";
+            } else if (type === 'SELL') {
+                btnSell.className = "py-2 rounded-xl text-xs font-bold border-2 border-accentRed bg-accentRed/10 text-accentRed transition-all";
+            } else if (type === 'TAKE_PROFIT') {
+                btnTp.className = "py-2 rounded-xl text-xs font-bold border-2 border-accentOrange bg-accentOrange/10 text-accentOrange transition-all";
+            }
+        }
+
+        function saveTransaction(event) {
+            event.preventDefault();
+            const type = document.getElementById('tx-type').value;
+            const symbol = document.getElementById('tx-symbol').value.toUpperCase().trim();
+            const qty = parseInt(document.getElementById('tx-qty').value);
+            const price = parseInt(document.getElementById('tx-price').value);
+            const date = document.getElementById('tx-date').value;
+            const fee = parseInt(document.getElementById('tx-fee').value) || 0;
+            const note = document.getElementById('tx-note').value.trim();
+
+            if (!symbol) return;
+
+            const newTx = {
+                id: crypto.randomUUID(),
+                type,
+                symbol,
+                quantity: qty,
+                price,
+                date,
+                fee,
+                note
+            };
+
+            transactions.push(newTx);
+            saveTransactionsToStorage();
+            
+            const portfolioIndex = portfolio.findIndex(s => s.symbol === symbol);
+            
+            if (type === 'BUY') {
+                if (portfolioIndex !== -1) {
+                    const current = portfolio[portfolioIndex];
+                    const newQty = current.quantity + qty;
+                    const newAvgCost = Math.round(((current.quantity * current.avgCost) + (qty * price)) / newQty);
+                    portfolio[portfolioIndex] = {
+                        ...current,
+                        quantity: newQty,
+                        avgCost: newAvgCost
+                    };
+                } else {
+                    portfolio.push({
+                        id: crypto.randomUUID(),
+                        symbol,
+                        quantity: qty,
+                        avgCost: price,
+                        buyDate: date,
+                        note: "Tự động tạo từ Nhật ký"
+                    });
+                }
+                savePortfolioToStorage();
+            } else if (type === 'SELL' || type === 'TAKE_PROFIT') {
+                if (portfolioIndex !== -1) {
+                    const current = portfolio[portfolioIndex];
+                    const remainder = current.quantity - qty;
+                    if (remainder <= 0) {
+                        portfolio = portfolio.filter(s => s.symbol !== symbol);
+                    } else {
+                        portfolio[portfolioIndex] = {
+                            ...current,
+                            quantity: remainder
+                        };
+                    }
+                    savePortfolioToStorage();
+                } else {
+                    showToast(`Cảnh báo: Bán mã ${symbol} không có trong danh mục`, 'warn');
+                }
+            }
+
+            closeTxModal();
+            fetchAndUpdatePrices();
+            renderPortfolio();
+            renderHistory();
+            renderMonthFilterOptions();
+            showToast("Đã lưu nhật ký giao dịch thành công!", "success");
+        }
+
+        function deleteTransaction(txId) {
+            const tx = transactions.find(t => t.id === txId);
+            if (!tx) return;
+            
+            transactions = transactions.filter(t => t.id !== txId);
+            saveTransactionsToStorage();
+            renderHistory();
+            renderMonthFilterOptions();
+            showToast("Đã xóa nhật ký giao dịch", "warn");
+        }
+
+        // ==========================================
+        // KHU VỰC QUẢN TRỊ DỮ LIỆU & CONFIG (TAB 4)
+        // ==========================================
+
+        function exportData() {
+            if (!AUTH.isAuthenticated()) return;
+            const exportObj = {
+                portfolio: portfolio,
+                transactions: transactions,
+                settings: {
+                    targetProfit: document.getElementById('setting-target-profit').value,
+                    stopLoss: document.getElementById('setting-stop-loss').value,
+                    feedUrl: document.getElementById('setting-feed-url').value,
+                    autoRefresh: document.getElementById('setting-auto-refresh').checked
+                },
+                exportVersion: "2.5",
+                exportedAt: new Date().toISOString(),
+                owner: AUTH.currentUsername()
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `portfolio-${AUTH.currentUsername()}-${new Date().toISOString().split('T')[0]}.json`);
+            dlAnchorElem.click();
+            showToast("Tải dữ liệu sao lưu thành công!", "success");
+        }
+
+        function triggerImport() {
+            document.getElementById('import-file-input').click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    
+                    if (parsedData.portfolio) portfolio = parsedData.portfolio;
+                    if (parsedData.transactions) transactions = parsedData.transactions;
+                    
+                    if (parsedData.settings) {
+                        document.getElementById('setting-target-profit').value = parsedData.settings.targetProfit || 15;
+                        document.getElementById('setting-stop-loss').value = parsedData.settings.stopLoss || 7;
+                        document.getElementById('setting-feed-url').value = parsedData.settings.feedUrl || "https://vnindex.kenvinzone.com";
+                        document.getElementById('setting-auto-refresh').checked = parsedData.settings.autoRefresh !== false;
+                    }
+
+                    // Lưu theo cấu trúc user hiện tại
+                    savePortfolioToStorage();
+                    saveTransactionsToStorage();
+                    saveSettingsToStorage();
+
+                    // Cập nhật giao diện
+                    fetchAndUpdatePrices();
+                    renderPortfolio();
+                    renderHistory();
+                    renderMonthFilterOptions();
+
+                    showToast("Đã khôi phục dữ liệu sao lưu thành công!", "success");
+                } catch (err) {
+                    console.error("Lỗi parse file sao lưu", err);
+                    showToast("Định dạng file không tương thích", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ĐẶT LẠI DỮ LIỆU TÀI SẢN (DÀNH RIÊNG CHO USER HIỆN TẠI)
+        function confirmResetData() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function resetAllData() {
+            if (!AUTH.isAuthenticated()) return;
+            const username = AUTH.currentUsername();
+            
+            // Chỉ xóa data của user đang đăng nhập
+            localStorage.removeItem(`portfolio_${username}`);
+            localStorage.removeItem(`transactions_${username}`);
+            localStorage.removeItem(`settings_${username}`);
+            
+            portfolio = [];
+            transactions = [];
+            prices = {};
+            
+            document.getElementById('setting-target-profit').value = 15;
+            document.getElementById('setting-stop-loss').value = 7;
+            document.getElementById('setting-feed-url').value = "https://vnindex.kenvinzone.com";
+            document.getElementById('setting-auto-refresh').checked = true;
+
+            saveSettingsToStorage();
+            closeConfirmModal();
+            renderPortfolio();
+            renderHistory();
+            renderMonthFilterOptions();
+            
+            showToast("Đã dọn dẹp tài sản tài khoản của bạn!", "warn");
+        }
+
+        // ============================================
+        // AUTH UI LOGIC IMPLEMENTATION
+        // ============================================
+        let selectedAvatar = '🐯';
+
+        // CHUYỂN ĐỔI TIẾNG VIỆT CÓ DẤU -> KHÔNG DẤU
+        function sanitizeUsernameString(str) {
+            if (!str) return '';
+            let val = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            val = val.replace(/[đĐ]/g, "d");
+            val = val.replace(/[^a-zA-Z0-9_]/g, "");
+            return val.toLowerCase();
+        }
+
+        function initAuthUI() {
+            // TỰ ĐỘNG CHUẨN HÓA KHI ĐANG GÕ TÊN ĐĂNG NHẬP (TRÁNH LỖI KÝ TỰ ĐẶC BIỆT)
+            const regUsername = document.getElementById('reg-username');
+            if (regUsername) {
+                regUsername.addEventListener('input', function(e) {
+                    e.target.value = sanitizeUsernameString(e.target.value);
+                });
+            }
+
+            const loginUsername = document.getElementById('login-username');
+            if (loginUsername) {
+                loginUsername.addEventListener('input', function(e) {
+                    e.target.value = sanitizeUsernameString(e.target.value);
+                });
+            }
+
+            // Render avatar picker
+            const picker = document.getElementById('avatar-picker');
+            picker.innerHTML = '';
+            AUTH.AVATARS.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.className = 'avatar-btn' + (emoji === selectedAvatar ? ' selected' : '');
+                btn.textContent = emoji;
+                btn.type = 'button';
+                btn.onclick = () => {
+                    selectedAvatar = emoji;
+                    document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                };
+                picker.appendChild(btn);
+            });
+
+            // Render danh sách users đã có (Quick login)
+            renderUserList();
+
+            // Login button
+            document.getElementById('login-btn').onclick = async () => {
+                const username = document.getElementById('login-username').value;
+                const password = document.getElementById('login-password').value;
+                await handleAuth('login', async () => {
+                    await AUTH.login(username, password);
+                }, 'login-error', 'login-btn');
+            };
+
+            // Register button
+            document.getElementById('register-btn').onclick = async () => {
+                const displayName = document.getElementById('reg-displayname').value;
+                const username = document.getElementById('reg-username').value;
+                const password = document.getElementById('reg-password').value;
+                const confirm = document.getElementById('reg-confirm').value;
+                
+                if (password !== confirm) {
+                    showError('register-error', 'Mật khẩu nhập lại không khớp');
+                    return;
+                }
+                await handleAuth('register', async () => {
+                    await AUTH.register(username, displayName, password, selectedAvatar);
+                }, 'register-error', 'register-btn');
+            };
+
+            // Enter key bindings
+            ['login-password', 'reg-confirm'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') {
+                            id === 'login-password'
+                                ? document.getElementById('login-btn').click()
+                                : document.getElementById('register-btn').click();
+                        }
+                    });
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function renderUserList() {
+            const { users } = AUTH.getUsers();
+            const container = document.getElementById('user-list');
+            container.innerHTML = '';
+
+            if (users.length === 0) {
+                container.style.display = 'none';
+                const divider = document.querySelector('.auth-divider');
+                if (divider) divider.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'flex';
+            const divider = document.querySelector('.auth-divider');
+            if (divider) divider.style.display = 'block';
+
+            users.forEach(user => {
+                const btn = document.createElement('button');
+                btn.className = 'user-quick-btn';
+                btn.innerHTML = `
+                    <span class="user-avatar">${user.avatar}</span>
+                    <span class="user-name">${user.displayName} <span class="text-[10px] text-textSec font-normal block font-mono">@${user.username}</span></span>
+                    <span class="user-arrow"><i data-lucide="chevron-right" class="w-5 h-5"></i></span>
+                `;
+                btn.onclick = () => {
+                    document.getElementById('login-username').value = user.username;
+                    showView('login-view');
+                    document.getElementById('login-password').focus();
+                };
+                container.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+
+        async function handleAuth(type, fn, errorId, btnId) {
+            const btn = document.getElementById(btnId);
+            const originalText = btn.textContent;
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Đang xử lý...';
+                await fn();
+                // Đăng nhập thành công -> chuyển giao diện vào App
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                initApp();
+            } catch (e) {
+                showError(errorId, e.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function showView(viewId) {
+            ['welcome-view', 'login-view', 'register-view'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== viewId);
+            });
+            lucide.createIcons();
+        }
+
+        function showError(elementId, msg) {
+            const el = document.getElementById(elementId);
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        // ĐĂNG XUẤT PHIÊN LÀM VIỆC
+        function confirmLogout() {
+            AUTH.logout();
+            showToast("Đã đăng xuất phiên làm việc", "warn");
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        }
+
+        // ============================================
+        // MODALS CHO KHU VỰC QUẢN TRỊ TÀI KHOẢN
+        // ============================================
+        function openChangePasswordModal() {
+            const modal = document.getElementById('password-modal');
+            const card = document.getElementById('password-modal-card');
+            const error = document.getElementById('password-modal-error');
+            
+            document.getElementById('password-form').reset();
+            error.classList.add('hidden');
+            modal.classList.remove('hidden');
+            setTimeout(() => card.classList.remove('scale-95', 'opacity-0'), 10);
+            lucide.createIcons();
+        }
+
+        function closeChangePasswordModal() {
+            const card = document.getElementById('password-modal-card');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                document.getElementById('password-modal').classList.add('hidden');
+            }, 150);
+        }
+
+        async function saveNewPassword(event) {
+            event.preventDefault();
+            const oldPass = document.getElementById('pass-old').value;
+            const newPass = document.getElementById('pass-new').value;
+            const confirmPass = document.getElementById('pass-confirm').value;
+            const error = document.getElementById('password-modal-error');
+
+            if (newPass !== confirmPass) {
+                error.textContent = "Mật khẩu xác nhận mới không khớp";
+                error.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                await AUTH.changePassword(oldPass, newPass);
+                closeChangePasswordModal();
+                showToast("Đổi mật khẩu tài khoản thành công!", "success");
+            } catch (err) {
+                error.textContent = err.message;
+                error.classList.remove('hidden');
+            }
+        }
+
+        function confirmDeleteAccount() {
+            const modal = document.getElementById('delete-account-modal');
+            const card = document.getElementById('delete-account-card');
+            const error = document.getElementById('delete-account-error');
+            
+            document.getElementById('delete-account-form').reset();
+            error.classList.add('hidden');
+            modal.classList.remove('hidden');
+            setTimeout(() => card.classList.remove('scale-95', 'opacity-0'), 10);
+            lucide.createIcons();
+        }
+
+        function closeDeleteAccountModal() {
+            const card = document.getElementById('delete-account-card');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                document.getElementById('delete-account-modal').classList.add('hidden');
+            }, 150);
+        }
+
+        async function executeDeleteAccount(event) {
+            event.preventDefault();
+            const password = document.getElementById('delete-pass-confirm').value;
+            const error = document.getElementById('delete-account-error');
+
+            try {
+                await AUTH.deleteAccount(password);
+                closeDeleteAccountModal();
+                showToast("Đã xóa vĩnh viễn tài khoản và dữ liệu!", "success");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 800);
+            } catch (err) {
+                error.textContent = err.message;
+                error.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
